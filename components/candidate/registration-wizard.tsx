@@ -1,112 +1,110 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import {
   User,
   Briefcase,
-  GraduationCap,
-  FileText,
-  Video,
   CheckCircle,
   ArrowLeft,
   ArrowRight,
+  Link2,
 } from "lucide-react"
 import { PersonalInfoStep } from "./steps/personal-info-step"
-import { WorkExperienceStep } from "./steps/work-experience-step"
-import { EducationSkillsStep } from "./steps/education-skills-step"
-import { DocumentsStep } from "./steps/documents-step"
-import { VideoProfileStep } from "./steps/video-profile-step"
-import { ReviewSubmitStep } from "./steps/review-submit-step"
+import { JobProfileStep } from "./steps/job-profile-step"
 
 const steps = [
-  { id: 1, name: "Personal Info", icon: User },
-  { id: 2, name: "Experience", icon: Briefcase },
-  { id: 3, name: "Education & Skills", icon: GraduationCap },
-  { id: 4, name: "Documents", icon: FileText },
-  { id: 5, name: "Video Profile", icon: Video },
-  { id: 6, name: "Review & Submit", icon: CheckCircle },
+  { id: 1, name: "Personal Information", icon: User },
+  { id: 2, name: "Job & Profile", icon: Briefcase },
 ]
 
 export type CandidateFormData = {
-  // Personal Info
+  // Personal Info (Step 1)
+  fullName: string
+  // Optional split fields used by other step components
   firstName: string
   lastName: string
   email: string
+  whatsapp: string
+  // Alias used by some step components
   phone: string
-  dateOfBirth: string
   gender: string
   nationality: string
-  currentLocation: string
-  preferredLocations: string[]
   languages: string[]
-  maritalStatus: string
-  // Work Experience
+  // Job & Profile (Step 2)
+  jobCategories: string[]
   totalExperience: string
+  noticePeriod: string
   currentJobTitle: string
   currentCompany: string
   currentSalary: string
   expectedSalary: string
-  noticePeriod: string
   industries: string[]
   jobTypes: string[]
-  // Education & Skills
+  qualification: string
   highestEducation: string
   fieldOfStudy: string
   skills: string[]
   certifications: string[]
-  // Documents
   cvFile: File | null
+  videoFile: File | null
   photoFile: File | null
   passportFile: File | null
-  // Video
-  videoFile: File | null
-  videoUrl: string
-  // Terms
+  salaryRange: { min: number; max: number } | null
+  visaCategory: string
   acceptTerms: boolean
   acceptServiceCharge: boolean
 }
 
 const initialFormData: CandidateFormData = {
+  fullName: "",
   firstName: "",
   lastName: "",
   email: "",
+  whatsapp: "",
   phone: "",
-  dateOfBirth: "",
   gender: "",
   nationality: "",
-  currentLocation: "",
-  preferredLocations: [],
   languages: [],
-  maritalStatus: "",
+  jobCategories: [],
   totalExperience: "",
+  noticePeriod: "",
   currentJobTitle: "",
   currentCompany: "",
   currentSalary: "",
   expectedSalary: "",
-  noticePeriod: "",
   industries: [],
   jobTypes: [],
+  qualification: "",
   highestEducation: "",
   fieldOfStudy: "",
   skills: [],
   certifications: [],
   cvFile: null,
+  videoFile: null,
   photoFile: null,
   passportFile: null,
-  videoFile: null,
-  videoUrl: "",
+  salaryRange: null,
+  visaCategory: "",
   acceptTerms: false,
   acceptServiceCharge: false,
 }
 
 export function CandidateRegistrationWizard() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<CandidateFormData>(initialFormData)
+  const [referralCode, setReferralCode] = useState<string | null>(null)
+
+  useEffect(() => {
+    const ref = searchParams.get("ref")?.trim() || null
+    setReferralCode(ref)
+  }, [searchParams])
 
   const progress = (currentStep / steps.length) * 100
 
@@ -126,10 +124,87 @@ export function CandidateRegistrationWizard() {
     }
   }
 
-  const handleSubmit = () => {
-    // Here you would submit the form data to your API
-    console.log("Submitting form data:", formData)
-    router.push("/candidate/dashboard")
+  const handleSubmit = async () => {
+    // Validation
+    if (!formData.fullName || !formData.email || !formData.whatsapp || !formData.gender || !formData.nationality) {
+      alert('Please complete all personal information fields.')
+      return
+    }
+    if (!formData.jobCategories || formData.jobCategories.length === 0) {
+      alert('Please select at least one job category.')
+      return
+    }
+    if (!formData.totalExperience || !formData.qualification) {
+      alert('Please fill in experience and qualification.')
+      return
+    }
+    if (!formData.cvFile) {
+      alert('Please upload your CV.')
+      return
+    }
+    if (!formData.videoFile) {
+      alert('Please record or upload your video introduction.')
+      return
+    }
+    if (!formData.salaryRange) {
+      alert('Please set your expected salary range.')
+      return
+    }
+    if (!formData.acceptTerms) {
+      alert('Please accept the terms and conditions.')
+      return
+    }
+
+    try {
+      const formDataToSend = new FormData()
+      const refToSend = referralCode || (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("ref") : null)
+
+      formDataToSend.append('fullName', formData.fullName)
+      formDataToSend.append('email', formData.email)
+      formDataToSend.append('whatsapp', formData.whatsapp)
+      formDataToSend.append('gender', formData.gender)
+      formDataToSend.append('nationality', formData.nationality)
+      formDataToSend.append('jobCategories', JSON.stringify(formData.jobCategories))
+      formDataToSend.append('totalExperience', formData.totalExperience)
+      formDataToSend.append('qualification', formData.qualification)
+      formDataToSend.append('salaryRange', JSON.stringify(formData.salaryRange))
+      formDataToSend.append('acceptTerms', formData.acceptTerms.toString())
+
+      if (refToSend) {
+        formDataToSend.append('referralLink', refToSend)
+      }
+      
+      // Add files
+      if (formData.cvFile) {
+        formDataToSend.append('cvFile', formData.cvFile)
+      }
+      if (formData.videoFile) {
+        formDataToSend.append('videoFile', formData.videoFile)
+      }
+
+      // Submit form data to API
+      const response = await fetch('/api/register/candidate', {
+        method: 'POST',
+        body: formDataToSend,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        alert(data.error || 'Registration failed. Please try again.')
+        return
+      }
+
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user))
+        localStorage.setItem('token', 'candidate_token_' + Date.now())
+      }
+
+      router.push("/candidate/dashboard")
+    } catch (error) {
+      console.error('Registration error:', error)
+      alert('Network error. Please try again.')
+    }
   }
 
   const renderStep = () => {
@@ -137,15 +212,7 @@ export function CandidateRegistrationWizard() {
       case 1:
         return <PersonalInfoStep formData={formData} updateFormData={updateFormData} />
       case 2:
-        return <WorkExperienceStep formData={formData} updateFormData={updateFormData} />
-      case 3:
-        return <EducationSkillsStep formData={formData} updateFormData={updateFormData} />
-      case 4:
-        return <DocumentsStep formData={formData} updateFormData={updateFormData} />
-      case 5:
-        return <VideoProfileStep formData={formData} updateFormData={updateFormData} />
-      case 6:
-        return <ReviewSubmitStep formData={formData} updateFormData={updateFormData} />
+        return <JobProfileStep formData={formData} updateFormData={updateFormData} />
       default:
         return null
     }
@@ -158,9 +225,17 @@ export function CandidateRegistrationWizard() {
         <h1 className="mb-2 text-center text-3xl font-bold text-foreground">
           Create Your Profile
         </h1>
-        <p className="mb-6 text-center text-muted-foreground">
+        <p className="mb-4 text-center text-muted-foreground">
           Complete your profile to get discovered by top companies
         </p>
+        {referralCode && (
+          <div className="mb-6 flex justify-center">
+            <Badge variant="secondary" className="gap-1.5 px-3 py-1">
+              <Link2 className="h-3.5 w-3.5" />
+              You were referred — your profile will be linked to the referrer
+            </Badge>
+          </div>
+        )}
 
         {/* Progress Bar */}
         <Progress value={progress} className="mb-6 h-2" />
@@ -225,7 +300,7 @@ export function CandidateRegistrationWizard() {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit} className="gap-2">
+              <Button onClick={handleSubmit} className="gap-2" disabled={!formData.acceptTerms}>
                 Submit Profile
                 <CheckCircle className="h-4 w-4" />
               </Button>

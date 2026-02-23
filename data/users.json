@@ -1,0 +1,60 @@
+[
+  {
+    "email": "shabeeb",
+    "password": "shabeeb255.",
+    "role": "super_admin",
+    "name": "Super Admin",
+    "isActive": true,
+    "id": "user_1770964655834_pan5owxvz",
+    "createdAt": "2026-02-13T06:37:35.834Z",
+    "updatedAt": "2026-02-13T06:37:35.834Z"
+  },
+  {
+    "email": "mshabeeb350@gmail.com",
+    "phone": "+ 9645961044",
+    "password": "temp_password_1770966320992",
+    "role": "candidate",
+    "name": "MUHAMMED SHABEEB",
+    "isActive": true,
+    "id": "user_1770966320993_4k4hzk532",
+    "createdAt": "2026-02-13T07:05:20.993Z",
+    "updatedAt": "2026-02-13T07:05:20.996Z",
+    "candidateId": "candidate_1770966320995_f9sloxzff"
+  },
+  {
+    "email": "a@gmail.com",
+    "phone": "99 45923232",
+    "password": "10010",
+    "role": "agency",
+    "name": "abc",
+    "isActive": true,
+    "id": "user_1771046758084_yjibrg6w1",
+    "createdAt": "2026-02-14T05:25:58.084Z",
+    "updatedAt": "2026-02-14T05:31:32.614Z",
+    "agencyId": "agency_1771046758086_usacb4g9x"
+  },
+  {
+    "email": "shabeeb@gmail.com",
+    "phone": "+ 9645961044",
+    "password": "temp_password_1771308547909",
+    "role": "candidate",
+    "name": "MUHAMMED shabeeb",
+    "isActive": true,
+    "id": "user_1771308547909_wlr1i5m4r",
+    "createdAt": "2026-02-17T06:09:07.909Z",
+    "updatedAt": "2026-02-17T06:09:07.912Z",
+    "candidateId": "candidate_1771308547911_xyl8bdr1n"
+  },
+  {
+    "email": "nabeel@gmail.com",
+    "phone": "91 989765412",
+    "password": "temp_password_1771312659644",
+    "role": "candidate",
+    "name": "nabeel sha",
+    "isActive": true,
+    "id": "user_1771312659644_karwb6m7l",
+    "createdAt": "2026-02-17T07:17:39.645Z",
+    "updatedAt": "2026-02-17T07:17:39.649Z",
+    "candidateId": "candidate_1771312659647_pba1f21sw"
+  }
+]

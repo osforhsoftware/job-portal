@@ -1,328 +1,314 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Bell,
   Briefcase,
   Users,
   FileText,
   TrendingUp,
-  DollarSign,
-  Building2,
   MapPin,
   Clock,
   Plus,
   Search,
-  ChevronDown,
-  Settings,
-  LogOut,
-  User,
-  Sun,
-  Moon,
-  Menu,
-  Home,
-  MessageSquare,
-  Gavel,
-  BarChart3,
-  Filter,
+  UserCheck,
+  FileCheck,
 } from "lucide-react"
-import { useTheme } from "next-themes"
+import { PageLoader } from "@/components/page-loader"
 
-// Mock data
-const stats = [
-  { label: "Active Jobs", value: "12", change: "+2", icon: Briefcase },
-  { label: "Total Candidates", value: "458", change: "+45", icon: Users },
-  { label: "Bids Placed", value: "34", change: "+8", icon: Gavel },
-  { label: "Hired This Month", value: "8", change: "+3", icon: TrendingUp },
-]
+interface Stats {
+  activeDemands: number
+  totalDemands: number
+  totalSubmissions: number
+  submitted: number
+  shortlisted: number
+  interview: number
+  hired: number
+  hiredThisMonth: number
+  companyName: string
+}
 
-const recentJobs = [
-  {
-    id: 1,
-    title: "Senior Civil Engineer",
-    location: "Dubai, UAE",
-    applicants: 45,
-    status: "active",
-    postedDate: "2 days ago",
-    salary: "$3,000 - $4,500",
-  },
-  {
-    id: 2,
-    title: "Project Manager",
-    location: "Abu Dhabi, UAE",
-    applicants: 32,
-    status: "active",
-    postedDate: "5 days ago",
-    salary: "$4,000 - $6,000",
-  },
-  {
-    id: 3,
-    title: "Site Supervisor",
-    location: "Dubai, UAE",
-    applicants: 28,
-    status: "closed",
-    postedDate: "1 week ago",
-    salary: "$2,500 - $3,500",
-  },
-]
+interface RecentDemand {
+  id: string
+  jobTitle: string
+  location: string
+  positions: number
+  filledPositions: number
+  status: string
+  createdAt: string
+  submissionCount: number
+}
 
-const topCandidates = [
-  { id: 1, name: "Mohammed Ahmed", role: "Civil Engineer", experience: "8 years", status: "shortlisted" },
-  { id: 2, name: "Priya Sharma", role: "Project Manager", experience: "10 years", status: "new" },
-  { id: 3, name: "Ahmed Hassan", role: "Site Engineer", experience: "5 years", status: "bidding" },
-]
+interface RecentSubmission {
+  id: string
+  candidateName: string
+  demandTitle: string
+  demandId: string
+  status: string
+  submittedAt: string
+  candidateRole: string
+}
 
 export default function CompanyDashboard() {
-  const { theme, setTheme } = useTheme()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [companyId, setCompanyId] = useState("")
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [recentDemands, setRecentDemands] = useState<RecentDemand[]>([])
+  const [recentSubmissions, setRecentSubmissions] = useState<RecentSubmission[]>([])
+
+  useEffect(() => {
+    const stored = localStorage.getItem("user")
+    if (!stored) return
+    try {
+      const u = JSON.parse(stored)
+      const cid = u.companyId ?? u.id ?? ""
+      setCompanyId(cid)
+    } catch {
+      return
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!companyId) return
+    fetch(`/api/company/stats?companyId=${encodeURIComponent(companyId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setStats(data.stats)
+          setRecentDemands(data.recentDemands ?? [])
+          setRecentSubmissions(data.recentSubmissions ?? [])
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [companyId])
+
+  const q = searchQuery.trim().toLowerCase()
+  const filteredDemands = q
+    ? recentDemands.filter(
+        (d) =>
+          d.jobTitle.toLowerCase().includes(q) ||
+          (d.location && d.location.toLowerCase().includes(q))
+      )
+    : recentDemands
+  const filteredSubmissions = q
+    ? recentSubmissions.filter(
+        (s) =>
+          s.candidateName.toLowerCase().includes(q) ||
+          s.demandTitle.toLowerCase().includes(q) ||
+          (s.candidateRole && s.candidateRole.toLowerCase().includes(q))
+      )
+    : recentSubmissions
+
+  if (loading && !stats) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <PageLoader />
+      </div>
+    )
+  }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-card transition-transform lg:static lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Briefcase className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-bold text-foreground">TalentBid</span>
+    <>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search demands and candidates..."
+            className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-
-        <nav className="flex flex-col gap-1 p-4">
-          <Link href="/company/dashboard" className="flex items-center gap-3 rounded-lg bg-primary/10 px-4 py-3 text-primary">
-            <Home className="h-5 w-5" />
-            Dashboard
+        <Button asChild className="gap-2">
+          <Link href="/company/demands/new">
+            <Plus className="h-4 w-4" />
+            Create Demand
           </Link>
-          <Link href="/company/jobs" className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground">
-            <Briefcase className="h-5 w-5" />
-            My Jobs
-            <Badge className="ml-auto">12</Badge>
-          </Link>
-          <Link href="/company/candidates" className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground">
-            <Users className="h-5 w-5" />
-            Candidates
-          </Link>
-          <Link href="/company/bidding" className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground">
-            <Gavel className="h-5 w-5" />
-            Bidding Center
-          </Link>
-          <Link href="/company/shortlist" className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground">
-            <FileText className="h-5 w-5" />
-            Shortlisted
-          </Link>
-          <Link href="/company/messages" className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground">
-            <MessageSquare className="h-5 w-5" />
-            Messages
-          </Link>
-          <Link href="/company/analytics" className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground">
-            <BarChart3 className="h-5 w-5" />
-            Analytics
-          </Link>
-        </nav>
+        </Button>
+      </div>
 
-        <div className="absolute bottom-0 left-0 right-0 border-t border-border p-4">
-          <Link href="/company/settings" className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground">
-            <Settings className="h-5 w-5" />
-            Settings
-          </Link>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1">
-        {/* Top Bar */}
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur lg:px-8">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            <Menu className="h-6 w-6" />
-          </Button>
-
-          <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold text-foreground">Company Dashboard</h1>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            </Button>
-
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs text-destructive-foreground">
-                5
-              </span>
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                    GC
-                  </div>
-                  <span className="hidden sm:inline">Gulf Construction</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Building2 className="mr-2 h-4 w-4" />
-                  Company Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-
-        {/* Dashboard Content */}
-        <main className="p-4 lg:p-8">
-          {/* Quick Actions */}
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search candidates, jobs..." className="pl-10" />
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href="/company/demands">
+          <Card className="h-full transition-colors hover:bg-muted/50">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                <Briefcase className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats?.activeDemands ?? 0}</p>
+                <p className="text-sm text-muted-foreground">Active Demands</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/company/demands">
+          <Card className="h-full transition-colors hover:bg-muted/50">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/10">
+                <FileCheck className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats?.totalSubmissions ?? 0}</p>
+                <p className="text-sm text-muted-foreground">Total Submissions</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-500/10">
+              <UserCheck className="h-6 w-6 text-amber-600" />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="gap-2 bg-transparent">
-                <Filter className="h-4 w-4" />
-                Filters
-              </Button>
-              <Button asChild className="gap-2">
-                <Link href="/company/jobs/new">
-                  <Plus className="h-4 w-4" />
-                  Post New Job
-                </Link>
-              </Button>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats?.interview ?? 0}</p>
+              <p className="text-sm text-muted-foreground">In Interview</p>
             </div>
-          </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
+              <TrendingUp className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats?.hired ?? 0}</p>
+              <p className="text-sm text-muted-foreground">
+                Hired {stats?.hiredThisMonth ? `(${stats.hiredThisMonth} this month)` : ""}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* Stats Grid */}
-          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map((stat) => (
-              <Card key={stat.label}>
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                    <stat.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  </div>
-                  <Badge variant="secondary" className="ml-auto">
-                    {stat.change}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Recent Jobs */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Recent Jobs</CardTitle>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/company/jobs">View All</Link>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Recent Demands</CardTitle>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/company/demands">View All</Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {filteredDemands.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+                <Briefcase className="mx-auto mb-2 h-10 w-10 opacity-50" />
+                <p>No demands yet</p>
+                <Button variant="link" className="mt-2" asChild>
+                  <Link href="/company/demands/new">Create your first demand</Link>
                 </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentJobs.map((job) => (
-                    <div key={job.id} className="flex items-center justify-between rounded-lg border border-border p-4">
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredDemands.map((d) => (
+                  <Link
+                    key={d.id}
+                    href={`/company/demands/${d.id}`}
+                    className="block rounded-lg border border-border p-4 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-semibold text-foreground">{job.title}</h3>
+                        <h3 className="font-semibold text-foreground">{d.jobTitle}</h3>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {job.location}
-                          </span>
+                          {d.location && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {d.location}
+                            </span>
+                          )}
                           <span className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
-                            {job.applicants} applicants
+                            {d.submissionCount} submissions
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {job.postedDate}
+                            {d.filledPositions}/{d.positions} filled
                           </span>
                         </div>
                       </div>
-                      <Badge variant={job.status === "active" ? "default" : "secondary"} className="capitalize">
-                        {job.status}
+                      <Badge
+                        variant={d.status === "open" ? "default" : "secondary"}
+                        className="shrink-0 capitalize"
+                      >
+                        {d.status}
                       </Badge>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-            {/* Top Candidates */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Top Candidates</CardTitle>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/company/candidates">View All</Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {topCandidates.map((candidate) => (
-                    <div key={candidate.id} className="flex items-center justify-between rounded-lg border border-border p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
-                          {candidate.name.split(" ").map((n) => n[0]).join("")}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground">{candidate.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {candidate.role} • {candidate.experience}
-                          </p>
-                        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Recent Submissions</CardTitle>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/company/demands">View All</Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {filteredSubmissions.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+                <Users className="mx-auto mb-2 h-10 w-10 opacity-50" />
+                <p>No submissions yet</p>
+                <p className="mt-1 text-xs">
+                  Submissions will appear when agencies send candidates for your demands.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredSubmissions.map((s) => (
+                  <Link
+                    key={s.id}
+                    href={`/company/demands/${s.demandId}`}
+                    className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
+                        {s.candidateName
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase()}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant={
-                            candidate.status === "shortlisted"
-                              ? "default"
-                              : candidate.status === "bidding"
-                                ? "secondary"
-                                : "outline"
-                          }
-                          className="capitalize"
-                        >
-                          {candidate.status}
-                        </Badge>
-                        <Button size="sm">View</Button>
+                      <div>
+                        <h3 className="font-semibold text-foreground">{s.candidateName}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {s.candidateRole || s.demandTitle}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          s.status === "hired" || s.status === "selected"
+                            ? "default"
+                            : s.status === "rejected"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                        className="capitalize"
+                      >
+                        {s.status}
+                      </Badge>
+                      <Button size="sm" variant="ghost" asChild>
+                        <Link href={`/company/demands/${s.demandId}`}>Review</Link>
+                      </Button>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-    </div>
+    </>
   )
 }

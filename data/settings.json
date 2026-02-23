@@ -1,0 +1,14 @@
+[
+  {
+    "id": "setting_1771312659625",
+    "key": "videoRequired",
+    "value": false,
+    "updatedAt": "2026-02-17T07:17:39.625Z"
+  },
+  {
+    "id": "setting_1771312659627",
+    "key": "commissionRate",
+    "value": 0.15,
+    "updatedAt": "2026-02-17T07:17:39.627Z"
+  }
+]

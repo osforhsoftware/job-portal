@@ -68,6 +68,16 @@ export function VideoProfileStep({ formData, updateFormData }: VideoProfileStepP
     }
   }, [stream])
 
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop()
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+    }
+    setIsRecording(false)
+  }, [])
+
   const startRecording = useCallback(() => {
     if (!stream) return
 
@@ -103,17 +113,7 @@ export function VideoProfileStep({ formData, updateFormData }: VideoProfileStepP
         return prev + 1
       })
     }, 1000)
-  }, [stream, stopCamera, updateFormData])
-
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop()
-    }
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-    }
-    setIsRecording(false)
-  }, [])
+  }, [stream, stopCamera, updateFormData, stopRecording])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

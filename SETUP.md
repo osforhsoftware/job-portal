@@ -1,0 +1,111 @@
+# Setup & Quick Start Guide
+
+## 🚀 Quick Start
+
+1. **Install Dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Start Development Server**
+   ```bash
+   npm run dev
+   ```
+
+3. **Access the Application**
+   - Open: http://localhost:3000
+   - Admin Login: http://localhost:3000/admin/login
+     - Username: `shabeeb`
+     - Password: `shabeeb255.`
+
+## 📋 Initial Setup
+
+The database will auto-initialize on first API call. To manually initialize:
+
+1. Visit: http://localhost:3000/api/init
+2. This creates:
+   - Super admin user
+   - Default subscription plans
+   - System settings
+
+## 🔑 Default Accounts
+
+### Super Admin
+- **URL**: `/admin/login`
+- **Username**: `shabeeb`
+- **Password**: `shabeeb255.`
+
+## 📁 Database Files
+
+Database files are stored in `data/` directory:
+- `users.json` - All users
+- `candidates.json` - Candidate profiles
+- `agencies.json` - Agency accounts
+- `companies.json` - Company accounts
+- `bids.json` - Bidding records
+- `subscriptions.json` - Subscription records
+- `plans.json` - Subscription plans
+- `interviews.json` - Interview records
+- `payments.json` - Payment transactions
+- `settings.json` - System settings
+
+## 🎯 Key Pages
+
+### Admin
+- `/admin/login` - Admin login
+- `/admin/dashboard` - Admin dashboard
+- `/admin/agencies` - Manage agencies
+- `/admin/companies` - Manage companies
+- `/admin/candidates` - Manage candidates
+- `/admin/plans` - Manage subscription plans
+
+### Agency
+- `/register/agency` - Agency registration
+- `/login/agency` - Agency login
+- `/agency/dashboard` - Agency dashboard
+
+### Candidate
+- `/register/candidate` - Candidate registration
+- `/login/candidate` - Candidate login
+- `/candidate/dashboard` - Candidate dashboard
+
+### Company
+- `/register/company` - Company registration
+- `/login/company` - Company login
+- `/company/dashboard` - Company dashboard
+
+## 🔧 Development Notes
+
+1. **Database**: Currently using file-based JSON storage. Replace with PostgreSQL/MongoDB for production.
+
+2. **Authentication**: Simple password check. Implement bcrypt hashing and JWT tokens for production.
+
+3. **File Uploads**: Currently simulated. Implement actual file storage (AWS S3, Cloudinary, etc.).
+
+4. **Payments**: Demo mode enabled. Integrate real payment gateway (Stripe/PayPal) for production.
+
+## 🐛 Troubleshooting
+
+### Database not initializing
+- Visit `/api/init` manually
+- Check `data/` directory permissions
+- Ensure write permissions on project directory
+
+### Login not working
+- Check browser console for errors
+- Verify database files exist in `data/` directory
+- Clear browser localStorage and try again
+
+### Build errors
+- Run `npm install` to ensure all dependencies are installed
+- Check Node.js version (requires 18+)
+- Clear `.next` directory and rebuild
+
+## 📝 Next Steps
+
+1. Complete bidding system UI
+2. Implement interview video platform
+3. Add chat functionality
+4. Build comprehensive reports
+5. Add file upload handling
+6. Implement email notifications

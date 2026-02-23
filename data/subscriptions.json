@@ -1,0 +1,14 @@
+[
+  {
+    "userId": "user_1771046758084_yjibrg6w1",
+    "entityType": "agency",
+    "entityId": "agency_1771046758086_usacb4g9x",
+    "plan": "basic",
+    "amount": 99,
+    "status": "expired",
+    "startDate": "2026-02-14T05:25:58.091Z",
+    "endDate": "2026-03-14T05:25:58.091Z",
+    "id": "sub_1771046758091_syaw5jr1m",
+    "createdAt": "2026-02-14T05:25:58.092Z"
+  }
+]

@@ -53,19 +53,66 @@ export default function CompanyRegisterPage() {
     contactEmail: "",
     contactPhone: "",
     contactPosition: "",
+    password: "",
+    confirmPassword: "",
     logoFile: null as File | null,
     acceptTerms: false,
   })
+  const [error, setError] = useState("")
 
   const updateForm = (field: string, value: string | boolean | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSubmit = async () => {
+    setError("")
+    if (formData.password !== formData.confirmPassword) {
+      setError("Password and confirm password do not match")
+      return
+    }
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters")
+      return
+    }
     setLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setLoading(false)
-    router.push("/company/dashboard")
+    try {
+      const response = await fetch("/api/register/company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName: formData.companyName,
+          tradeLicense: formData.tradeLicense,
+          industry: formData.industry,
+          companySize: formData.companySize,
+          website: formData.website || undefined,
+          country: formData.country,
+          city: formData.city,
+          address: formData.address || undefined,
+          description: formData.description || undefined,
+          contactName: formData.contactName,
+          contactEmail: formData.contactEmail,
+          contactPhone: formData.contactPhone,
+          contactPosition: formData.contactPosition,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setError(data.error || "Registration failed")
+        setLoading(false)
+        return
+      }
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user))
+        localStorage.setItem("token", "company_token_" + Date.now())
+      }
+      router.push("/company/dashboard")
+    } catch {
+      setError("Network error. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -282,6 +329,34 @@ export default function CompanyRegisterPage() {
                       onChange={(e) => updateForm("contactPhone", e.target.value)}
                     />
                   </div>
+
+                  {/* Password - used for login */}
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password *</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Create a password (min 6 characters)"
+                      value={formData.password}
+                      onChange={(e) => updateForm("password", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Confirm password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => updateForm("confirmPassword", e.target.value)}
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                      {error}
+                    </div>
+                  )}
 
                   {/* Terms */}
                   <div className="flex items-start space-x-3 rounded-lg border border-border p-4">

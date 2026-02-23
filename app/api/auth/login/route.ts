@@ -1,0 +1,99 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { db, initializeDatabase } from '@/lib/db'
+import { authenticate } from '@/lib/auth'
+import { apiError } from '@/lib/api-utils'
+
+export async function POST(request: NextRequest) {
+  try {
+    await initializeDatabase()
+    const { email, password } = await request.json()
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      )
+    }
+
+    const user = await authenticate(email, password)
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      )
+    }
+
+    if (user.role === 'agency') {
+      const agency = await db.agencies.getById(user.agencyId || user.id)
+      if (agency) {
+        const approvalStatus = (agency as any).approvalStatus || 'pending'
+        if (approvalStatus === 'rejected') {
+          return NextResponse.json(
+            { error: 'Your agency registration has been rejected. Please contact support.' },
+            { status: 403 }
+          )
+        }
+        if (!agency.isActive) {
+          return NextResponse.json(
+            { error: 'Your agency account is inactive. Please contact support.' },
+            { status: 403 }
+          )
+        }
+        if (approvalStatus !== 'approved') {
+          return NextResponse.json(
+            { error: 'Your agency is pending admin approval. Please wait for the super admin to approve your account.' },
+            { status: 403 }
+          )
+        }
+      }
+    }
+
+    if (user.role === 'agent' && user.agencyId) {
+      const agency = await db.agencies.getById(user.agencyId)
+      if (agency) {
+        const approvalStatus = (agency as any).approvalStatus || 'pending'
+        if (approvalStatus === 'rejected') {
+          return NextResponse.json(
+            { error: 'Your agency has been rejected. You cannot sign in. Please contact your agency or support.' },
+            { status: 403 }
+          )
+        }
+        if (!agency.isActive) {
+          return NextResponse.json(
+            { error: 'Your agency account is inactive. You cannot sign in. Please contact your agency or support.' },
+            { status: 403 }
+          )
+        }
+        if (approvalStatus !== 'approved') {
+          return NextResponse.json(
+            { error: 'Your agency is pending approval. You cannot sign in until the agency is approved.' },
+            { status: 403 }
+          )
+        }
+      }
+    }
+
+    if (!user.isActive) {
+      if (user.role === 'agent') {
+        await db.agents.update(user.agentId || user.id, { isActive: true })
+        user.isActive = true
+      } else if (user.role === 'company' || user.role === 'corporate') {
+        await db.companies.update(user.companyId || user.id, { isActive: true })
+        user.isActive = true
+      } else if (user.role === 'candidate') {
+        await db.candidates.update(user.candidateId || user.id, { isActive: true })
+        user.isActive = true
+      }
+    }
+
+    const { password: _, ...userWithoutPassword } = user
+
+    return NextResponse.json({
+      success: true,
+      user: userWithoutPassword,
+    })
+  } catch (error) {
+    return apiError(error, 500)
+  }
+}

@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter, usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,7 +27,10 @@ import {
   Building2,
   ChevronDown,
   LogIn,
+  LogOut,
   Globe,
+  LayoutDashboard,
+  User,
 } from "lucide-react"
 
 const navigation = [
@@ -35,20 +39,71 @@ const navigation = [
   { name: "Companies", href: "/companies" },
   { name: "Agencies", href: "/agencies" },
   { name: "How It Works", href: "/how-it-works" },
+  // { name: "Admin", href: "/admin/login", admin: true },
 ]
 
 const languages = [
   { code: "en", name: "English" },
   { code: "ar", name: "العربية" },
   { code: "hi", name: "हिन्दी" },
-  { code: "tl", name: "Filipino" },
-  { code: "bn", name: "বাংলা" },
+  // { code: "tl", name: "Filipino" },
+  // { code: "bn", name: "বাংলা" },
 ]
+
+function getDashboardHref(role: string): string {
+  if (role === "candidate") return "/candidate/dashboard"
+  if (role === "company" || role === "corporate") return "/company/dashboard"
+  if (role === "agency") return "/agency/dashboard"
+  if (role === "agent") return "/agent/dashboard"
+  if (role === "admin" || role === "super_admin") return "/admin/dashboard"
+  return "/"
+}
+
+function getRoleLabel(role: string): string {
+  const labels: Record<string, string> = {
+    candidate: "Job Seeker",
+    company: "Company",
+    corporate: "Company",
+    agency: "Agency",
+    agent: "Agent",
+    admin: "Admin",
+    super_admin: "Admin",
+  }
+  return labels[role] || role
+}
+
+function readStoredUser(): { name?: string; email?: string; role?: string } | null {
+  if (typeof window === "undefined") return null
+  try {
+    const stored = localStorage.getItem("user")
+    const token = localStorage.getItem("token")
+    if (!stored || !token) return null
+    return JSON.parse(stored)
+  } catch {
+    return null
+  }
+}
 
 export function Header() {
   const { setTheme, theme } = useTheme()
+  const router = useRouter()
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [language, setLanguage] = useState("en")
+  const [user, setUser] = useState<{ name?: string; email?: string; role?: string } | null>(null)
+
+  // Hydrate user from localStorage after mount so server and client first paint match (avoids hydration error)
+  useEffect(() => {
+    setUser(readStoredUser())
+  }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem("user")
+    localStorage.removeItem("token")
+    setUser(null)
+    setIsOpen(false)
+    router.push("/")
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -109,72 +164,104 @@ export function Header() {
             <span className="sr-only">Toggle theme</span>
           </Button>
 
-          {/* Login Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                <LogIn className="h-4 w-4" />
-                Login
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem asChild>
-                <Link href="/login/candidate" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Job Seeker
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/login/company" className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Company
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/login/agency" className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4" />
-                  Agency
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/admin/login" className="flex items-center gap-2 text-muted-foreground">
-                  Admin Portal
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Logged-in: Account dropdown with Dashboard + Logout */}
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                  <User className="h-4 w-4" />
+                  <span className="max-w-[120px] truncate">{user.name || user.email || "Account"}</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  {user.email}
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href={getDashboardHref(user.role || "")} className="flex items-center gap-2">
+                    <LayoutDashboard className="h-4 w-4" />
+                    {getRoleLabel(user.role || "")} Dashboard
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <>
+              {/* Login Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                    <LogIn className="h-4 w-4" />
+                    Login
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/login/candidate" className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Job Seeker
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/login/company" className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Company
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/login/agency" className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4" />
+                      Agency
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/login" className="flex items-center gap-2 text-muted-foreground">
+                      Admin Portal
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          {/* Register Button */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" className="gap-2">
-                Get Started
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem asChild>
-                <Link href="/register/candidate" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Find Jobs
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/register/company" className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Hire Talent
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/register/agency" className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4" />
-                  Partner as Agency
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              {/* Register Button */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="gap-2">
+                    Get Started
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/register/candidate" className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Find Jobs
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/register/company" className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Hire Talent
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/register/agency" className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4" />
+                      Partner as Agency
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu */}
@@ -233,50 +320,74 @@ export function Header() {
                   </div>
                 </div>
 
-                {/* Mobile Auth Actions */}
-                <div className="flex flex-col gap-2 border-t border-border pt-4">
-                  <p className="mb-2 px-4 text-xs font-medium uppercase text-muted-foreground">
-                    Login As
-                  </p>
-                  <Link
-                    href="/login/candidate"
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
-                  >
-                    <Users className="h-5 w-5" />
-                    Job Seeker
-                  </Link>
-                  <Link
-                    href="/login/company"
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
-                  >
-                    <Building2 className="h-5 w-5" />
-                    Company
-                  </Link>
-                  <Link
-                    href="/login/agency"
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
-                  >
-                    <Briefcase className="h-5 w-5" />
-                    Agency
-                  </Link>
-                </div>
+                {/* Mobile: Logged-in user or Login/Register */}
+                {user ? (
+                  <div className="flex flex-col gap-2 border-t border-border pt-4">
+                    <p className="px-4 text-sm font-medium text-foreground truncate">
+                      {user.name || user.email}
+                    </p>
+                    <Link
+                      href={getDashboardHref(user.role || "")}
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
+                    >
+                      <LayoutDashboard className="h-5 w-5" />
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-destructive hover:bg-destructive/10"
+                    >
+                      <LogOut className="h-5 w-5" />
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-2 border-t border-border pt-4">
+                      <p className="mb-2 px-4 text-xs font-medium uppercase text-muted-foreground">
+                        Login As
+                      </p>
+                      <Link
+                        href="/login/candidate"
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
+                      >
+                        <Users className="h-5 w-5" />
+                        Job Seeker
+                      </Link>
+                      <Link
+                        href="/login/company"
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
+                      >
+                        <Building2 className="h-5 w-5" />
+                        Company
+                      </Link>
+                      <Link
+                        href="/login/agency"
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
+                      >
+                        <Briefcase className="h-5 w-5" />
+                        Agency
+                      </Link>
+                    </div>
 
-                {/* Register CTAs */}
-                <div className="flex flex-col gap-2 px-4">
-                  <Button asChild className="w-full">
-                    <Link href="/register/candidate" onClick={() => setIsOpen(false)}>
-                      Find Jobs
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" className="w-full bg-transparent">
-                    <Link href="/register/company" onClick={() => setIsOpen(false)}>
-                      Hire Talent
-                    </Link>
-                  </Button>
-                </div>
+                    <div className="flex flex-col gap-2 px-4">
+                      <Button asChild className="w-full">
+                        <Link href="/register/candidate" onClick={() => setIsOpen(false)}>
+                          Find Jobs
+                        </Link>
+                      </Button>
+                      <Button asChild variant="outline" className="w-full bg-transparent">
+                        <Link href="/register/company" onClick={() => setIsOpen(false)}>
+                          Hire Talent
+                        </Link>
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </SheetContent>
           </Sheet>

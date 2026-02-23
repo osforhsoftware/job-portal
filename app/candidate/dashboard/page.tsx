@@ -40,7 +40,7 @@ import { useTheme } from "next-themes"
 
 // Mock data
 const stats = [
-  { label: "Profile Views", value: "1,234", change: "+12%", icon: Eye },
+  { label: "Profile Views", value: "6000+", change: "+12%", icon: Eye },
   { label: "Active Bids", value: "8", change: "+3", icon: TrendingUp },
   { label: "Shortlisted", value: "15", change: "+5", icon: Heart },
   { label: "Avg. Bid Amount", value: "$2,500", change: "+8%", icon: DollarSign },
@@ -213,7 +213,9 @@ export default function CandidateDashboard() {
                   <p className="text-sm text-muted-foreground">Add a video profile to increase visibility by 5x</p>
                 </div>
               </div>
-              <Button>Complete Profile</Button>
+              <Link href="/candidate/profile">
+                <Button>Complete Profile</Button>
+              </Link>
             </CardContent>
           </Card>
 

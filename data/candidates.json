@@ -1,0 +1,177 @@
+[
+  {
+    "userId": "user_1770966320993_4k4hzk532",
+    "firstName": "MUHAMMED",
+    "lastName": "SHABEEB",
+    "email": "mshabeeb350@gmail.com",
+    "phone": "+ 9645961044",
+    "dateOfBirth": "2003-02-20",
+    "gender": "male",
+    "nationality": "indian",
+    "currentLocation": "dubai, uae",
+    "preferredLocations": [
+      "Abu Dhabi, UAE"
+    ],
+    "languages": [
+      "Telugu",
+      "Filipino/Tagalog",
+      "English"
+    ],
+    "maritalStatus": "prefer not to say",
+    "totalExperience": "1-2 years",
+    "currentJobTitle": "",
+    "currentCompany": "",
+    "currentSalary": "",
+    "expectedSalary": "",
+    "noticePeriod": "1 week",
+    "industries": [],
+    "jobTypes": [
+      "Internship"
+    ],
+    "jobCategories": [
+      "driver",
+      "cook",
+      "cleaner",
+      "office",
+      "security",
+      "maintenance",
+      "beauty",
+      "hospitality",
+      "healthcare",
+      "retail"
+    ],
+    "salaryRange": {
+      "min": 5300,
+      "max": 5000
+    },
+    "visaCategory": "employment_visa",
+    "highestEducation": "",
+    "fieldOfStudy": "",
+    "skills": [
+      "Microsoft Office",
+      "Communication",
+      "Plumbing"
+    ],
+    "certifications": [],
+    "status": "available",
+    "id": "candidate_1770966320995_f9sloxzff",
+    "createdAt": "2026-02-13T07:05:20.995Z",
+    "updatedAt": "2026-02-13T07:05:20.995Z"
+  },
+  {
+    "userId": "user_1771308547909_wlr1i5m4r",
+    "firstName": "MUHAMMED",
+    "lastName": "shabeeb",
+    "email": "shabeeb@gmail.com",
+    "phone": "+ 9645961044",
+    "dateOfBirth": "2003-12-15",
+    "gender": "male",
+    "nationality": "bangladeshi",
+    "currentLocation": "doha, qatar",
+    "preferredLocations": [
+      "Dubai, UAE",
+      "Jeddah, Saudi Arabia",
+      "Dammam, Saudi Arabia"
+    ],
+    "languages": [
+      "English",
+      "Arabic"
+    ],
+    "maritalStatus": "single",
+    "totalExperience": "2-3 years",
+    "currentJobTitle": "web developer",
+    "currentCompany": "",
+    "currentSalary": "$500 - $1,000",
+    "expectedSalary": "$500 - $1,000",
+    "noticePeriod": "1 week",
+    "industries": [
+      "IT & Technology"
+    ],
+    "jobTypes": [
+      "Temporary",
+      "Full-time"
+    ],
+    "jobCategories": [
+      "cleaner",
+      "security",
+      "office",
+      "delivery",
+      "beauty"
+    ],
+    "salaryRange": {
+      "min": 500,
+      "max": 5500
+    },
+    "visaCategory": "other",
+    "highestEducation": "master's degree",
+    "fieldOfStudy": "engineering",
+    "skills": [
+      "Design"
+    ],
+    "certifications": [
+      "Six Sigma"
+    ],
+    "status": "available",
+    "id": "candidate_1771308547911_xyl8bdr1n",
+    "createdAt": "2026-02-17T06:09:07.911Z",
+    "updatedAt": "2026-02-17T06:09:07.911Z"
+  },
+  {
+    "userId": "user_1771312659644_karwb6m7l",
+    "firstName": "nabeel",
+    "lastName": "sha",
+    "email": "nabeel@gmail.com",
+    "phone": "91 989765412",
+    "dateOfBirth": "2002-12-10",
+    "gender": "male",
+    "nationality": "indian",
+    "currentLocation": "dubai, uae",
+    "preferredLocations": [
+      "Riyadh, Saudi Arabia",
+      "Dubai, UAE"
+    ],
+    "languages": [
+      "Malayalam"
+    ],
+    "maritalStatus": "married",
+    "totalExperience": "1-2 years",
+    "currentJobTitle": "web developer",
+    "currentCompany": "web developer",
+    "currentSalary": "$500 - $1,000",
+    "expectedSalary": "$500 - $1,000",
+    "noticePeriod": "1 week",
+    "industries": [
+      "Construction",
+      "Healthcare",
+      "Hospitality"
+    ],
+    "jobTypes": [
+      "Temporary"
+    ],
+    "jobCategories": [
+      "hospitality",
+      "cook",
+      "cleaner",
+      "office",
+      "delivery",
+      "beauty"
+    ],
+    "salaryRange": {
+      "min": 500,
+      "max": 5000
+    },
+    "visaCategory": "employment_visa",
+    "highestEducation": "high school",
+    "fieldOfStudy": "engineering",
+    "skills": [
+      "Microsoft Office",
+      "Leadership",
+      "Electrical Work"
+    ],
+    "certifications": [],
+    "status": "available",
+    "id": "candidate_1771312659647_pba1f21sw",
+    "createdAt": "2026-02-17T07:17:39.647Z",
+    "updatedAt": "2026-02-17T07:17:39.647Z"
+  }
+]
