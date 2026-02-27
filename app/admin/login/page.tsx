@@ -119,11 +119,11 @@ export default function AdminLoginPage() {
                 )}
               </Button>
 
-              <div className="mt-4 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+              {/* <div className="mt-4 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
                 <p className="font-medium mb-1">Demo Credentials:</p>
                 <p>Username: <strong>shabeeb</strong></p>
                 <p>Password: <strong>shabeeb255.</strong></p>
-              </div>
+              </div> */}
             </form>
           </CardContent>
         </Card>

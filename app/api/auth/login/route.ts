@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await authenticate(email, password)
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
@@ -74,12 +74,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (user.role === 'company' || user.role === 'corporate') {
+      const company = await db.companies.getById(user.companyId || user.id)
+      if (company) {
+        if (!company.subscriptionStatus || company.subscriptionStatus !== 'active') {
+          return NextResponse.json(
+            {
+              error: 'Your account is currently under review by the administrator. Please wait until your company details are verified and approved.',
+            },
+            { status: 403 }
+          )
+        }
+        if (!company.isActive) {
+          return NextResponse.json(
+            {
+              error:
+                'Your registration could not be approved. Please contact support for assistance.',
+            },
+            { status: 403 }
+          )
+        }
+      }
+    }
+
     if (!user.isActive) {
       if (user.role === 'agent') {
         await db.agents.update(user.agentId || user.id, { isActive: true })
-        user.isActive = true
-      } else if (user.role === 'company' || user.role === 'corporate') {
-        await db.companies.update(user.companyId || user.id, { isActive: true })
         user.isActive = true
       } else if (user.role === 'candidate') {
         await db.candidates.update(user.candidateId || user.id, { isActive: true })

@@ -35,7 +35,11 @@ function getPageTitle(pathname: string): string {
   if (pathname === "/company/demands") return "My Demands"
   if (pathname === "/company/demands/new") return "Create Demand"
   if (pathname.match(/^\/company\/demands\/[^/]+$/)) return "Submissions"
-   if (pathname === "/company/candidates") return "Candidates"
+  if (pathname === "/company/candidates") return "Candidates"
+  if (pathname === "/company/bidding-center") return "Bidding Center"
+  if (pathname === "/company/shortlisted") return "Shortlisted"
+  if (pathname === "/company/messages") return "Messages"
+  if (pathname === "/company/analytics") return "Analytics"
   return "Company"
 }
 
@@ -155,28 +159,28 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
             Candidates
           </Link>
           <Link
-            href="/company/demands"
+            href="/company/bidding-center"
             className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <Gavel className="h-5 w-5" />
             Bidding Center
           </Link>
           <Link
-            href="/company/demands"
+            href="/company/shortlisted"
             className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <FileText className="h-5 w-5" />
             Shortlisted
           </Link>
           <Link
-            href="#"
+            href="/company/messages"
             className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <MessageSquare className="h-5 w-5" />
             Messages
           </Link>
           <Link
-            href="#"
+            href="/company/analytics"
             className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <BarChart3 className="h-5 w-5" />
