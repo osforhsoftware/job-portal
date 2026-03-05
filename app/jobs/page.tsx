@@ -46,7 +46,7 @@ function JobsContent() {
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<{ role?: string; candidateId?: string } | null>(null)
+  const [user, setUser] = useState<{ id?: string; role?: string; candidateId?: string } | null>(null)
   const [applyingId, setApplyingId] = useState<string | null>(null)
 
   useEffect(() => {

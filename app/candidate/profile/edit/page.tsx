@@ -47,6 +47,8 @@ const initialFormData: CandidateFormData = {
   visaCategory: "",
   acceptTerms: true,
   acceptServiceCharge: false,
+  password: "",
+  confirmPassword: "",
 }
 
 export default function CandidateProfileEditPage() {

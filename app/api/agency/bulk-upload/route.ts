@@ -97,12 +97,17 @@ export async function POST(request: NextRequest) {
 
           // 🔹 duplicate by contact
           if (parsed.email || parsed.phone) {
+            const orConditions: { email?: string; phone?: string }[] = []
+            if (parsed.email) {
+              orConditions.push({ email: parsed.email })
+            }
+            if (parsed.phone) {
+              orConditions.push({ phone: parsed.phone })
+            }
+
             const exists = await dbInstance.collection('candidates').findOne(
               {
-                $or: [
-                  parsed.email && { email: parsed.email },
-                  parsed.phone && { phone: parsed.phone },
-                ].filter(Boolean),
+                $or: orConditions,
               },
               { projection: { _id: 1 } }
             )
@@ -136,7 +141,7 @@ export async function POST(request: NextRequest) {
             cvUrl: `/uploads/${saved}`,
             password: '',
             isActive: true,
-          })
+          } as any)
 
           await dbInstance.collection('candidates').updateOne(
             { _id: new ObjectId(candidate.id) },

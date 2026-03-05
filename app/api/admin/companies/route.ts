@@ -22,7 +22,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { action, companyId, ...rest } = body as {
+    const { action, companyId, subscriptionPlan, subscriptionStatus, ...rest } = body as {
       action: string
       companyId: string
       subscriptionPlan?: string
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     if (action === 'approve') {
       await db.companies.update(companyId, {
         isActive: true,
-        subscriptionStatus: 'active',
+        subscriptionStatus: 'active' as 'active',
         ...rest,
       })
       const updated = await db.companies.getById(companyId)
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     if (action === 'reject') {
       await db.companies.update(companyId, {
         isActive: false,
-        subscriptionStatus: 'cancelled',
+        subscriptionStatus: 'cancelled' as 'cancelled',
       })
       const updated = await db.companies.getById(companyId)
       if (!updated) return NextResponse.json({ success: true, company: null })
@@ -79,11 +79,11 @@ export async function POST(request: Request) {
 
     if (action === 'updateSubscription') {
       const updates: Record<string, unknown> = {}
-      if (rest.subscriptionPlan !== undefined) {
-        updates.subscriptionPlan = rest.subscriptionPlan
+      if (subscriptionPlan !== undefined) {
+        updates.subscriptionPlan = subscriptionPlan
       }
-      if (rest.subscriptionStatus !== undefined) {
-        updates.subscriptionStatus = rest.subscriptionStatus
+      if (subscriptionStatus !== undefined) {
+        updates.subscriptionStatus = subscriptionStatus
       }
       await db.companies.update(companyId, updates as any)
       const updated = await db.companies.getById(companyId)

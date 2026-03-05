@@ -107,7 +107,7 @@ export async function PATCH(request: NextRequest) {
       await db.agencies.update(entityId, updates as any)
       const updated = await db.agencies.getById(entityId)
       if (!updated) return NextResponse.json({ success: true, entity: null })
-      const { password, ...safe } = updated as { password?: string; [k: string]: unknown }
+      const { password, ...safe } = (updated as any) || {}
       return NextResponse.json({ success: true, entity: safe, entityType: 'agency' })
     }
 
@@ -150,7 +150,7 @@ export async function PATCH(request: NextRequest) {
       }
       const updated = await db.companies.getById(entityId)
       if (!updated) return NextResponse.json({ success: true, entity: null })
-      const { password, ...safe } = updated as { password?: string; [k: string]: unknown }
+      const { password, ...safe } = (updated as any) || {}
       return NextResponse.json({ success: true, entity: safe, entityType: 'company' })
     }
 
