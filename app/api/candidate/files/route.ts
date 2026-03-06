@@ -1,53 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
-import path from 'path'
-import fs from 'fs'
+import { uploadToCloudinary, getResourceType } from '@/lib/cloudinary'
 
 export const runtime = 'nodejs'
 
-const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads')
-
 const ALLOWED_CV_TYPES = ['application/pdf']
 const ALLOWED_VIDEO_TYPES = [
-  'video/webm', 'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska',
+  'video/webm',
+  'video/mp4',
+  'video/quicktime',
+  'video/x-msvideo',
+  'video/x-matroska',
 ]
 const MAX_CV_SIZE = 5 * 1024 * 1024
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024
 
-function sanitizeFileName(name: string): string {
-  return name
-    .replace(/[^a-zA-Z0-9._-]/g, '_')
-    .replace(/_{2,}/g, '_')
-    .slice(0, 100)
+async function saveFileToCloudinary(file: File, prefix: string): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const resourceType = getResourceType(file.type)
+  const url = await uploadToCloudinary(buffer, file.type, {
+    folder: `recruitment/candidate/${prefix}`,
+    resource_type: resourceType,
+  })
+  return url
 }
 
-function ensureUploadsDir() {
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true })
-  }
-}
-
-async function saveFile(file: File, prefix: string): Promise<string> {
-  ensureUploadsDir()
-  const bytes = await file.arrayBuffer()
-  const buffer = Buffer.from(bytes)
-  const safeName = sanitizeFileName(file.name)
-  const fileName = `${prefix}-${Date.now()}-${safeName}`
-  const filePath = path.join(UPLOADS_DIR, fileName)
-  fs.writeFileSync(filePath, buffer)
-  return `/uploads/${fileName}`
-}
-
-function deleteOldFile(fileUrl: string | undefined) {
-  if (!fileUrl) return
-  try {
-    const filePath = path.join(process.cwd(), 'public', fileUrl)
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath)
-    }
-  } catch {
-    // Ignore deletion errors for old files
-  }
+// No-op for cloud URLs; local paths are no longer used
+function deleteOldFile(_fileUrl: string | undefined) {
+  // Files are now on Cloudinary; optional: implement Cloudinary delete by public_id if needed
 }
 
 // GET - Fetch candidate's current files info
@@ -102,7 +82,6 @@ export async function POST(request: NextRequest) {
 
     const updates: Record<string, string> = {}
 
-    // Handle CV upload
     if (cvFile) {
       if (!ALLOWED_CV_TYPES.includes(cvFile.type)) {
         return NextResponse.json({ error: 'CV must be a PDF file' }, { status: 400 })
@@ -111,10 +90,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'CV must be under 5 MB' }, { status: 400 })
       }
       deleteOldFile(candidate.cvUrl)
-      updates.cvUrl = await saveFile(cvFile, 'cv')
+      updates.cvUrl = await saveFileToCloudinary(cvFile, 'cv')
     }
 
-    // Handle video upload
     if (videoFile) {
       if (!ALLOWED_VIDEO_TYPES.includes(videoFile.type)) {
         return NextResponse.json(
@@ -126,7 +104,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Video must be under 50 MB' }, { status: 400 })
       }
       deleteOldFile(candidate.videoUrl)
-      updates.videoUrl = await saveFile(videoFile, 'video')
+      updates.videoUrl = await saveFileToCloudinary(videoFile, 'video')
     }
 
     await db.candidates.update(candidateId, updates)
@@ -136,8 +114,9 @@ export async function POST(request: NextRequest) {
       message: 'Files updated successfully',
       ...updates,
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('File update error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

@@ -2,12 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
 import { apiError } from '@/lib/api-utils'
-import path from 'path'
-import fs from 'fs'
+import { uploadToCloudinary, getResourceType } from '@/lib/cloudinary'
 
 export const runtime = 'nodejs'
-
-const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads')
 
 const ALLOWED_CV_TYPES = ['application/pdf']
 const ALLOWED_VIDEO_TYPES = [
@@ -20,30 +17,13 @@ const ALLOWED_VIDEO_TYPES = [
 const MAX_CV_SIZE = 5 * 1024 * 1024       // 5 MB
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024    // 50 MB
 
-function sanitizeFileName(name: string): string {
-  return name
-    .replace(/[^a-zA-Z0-9._-]/g, '_')
-    .replace(/_{2,}/g, '_')
-    .slice(0, 100)
-}
-
-function ensureUploadsDir() {
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true })
-  }
-}
-
-async function saveFile(file: File, prefix: string): Promise<string> {
-  ensureUploadsDir()
-
-  const bytes = await file.arrayBuffer()
-  const buffer = Buffer.from(bytes)
-  const safeName = sanitizeFileName(file.name)
-  const fileName = `${prefix}-${Date.now()}-${safeName}`
-  const filePath = path.join(UPLOADS_DIR, fileName)
-
-  fs.writeFileSync(filePath, buffer)
-  return `/uploads/${fileName}`
+async function saveFileToCloudinary(file: File, prefix: string): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const resourceType = getResourceType(file.type)
+  return uploadToCloudinary(buffer, file.type, {
+    folder: `recruitment/candidate/${prefix}`,
+    resource_type: resourceType,
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -195,9 +175,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Save files to public/uploads
-    const cvUrl = await saveFile(cvFile, 'cv')
-    const videoUrl = await saveFile(videoFile, 'video')
+    // Save files to Cloudinary
+    const cvUrl = await saveFileToCloudinary(cvFile, 'cv')
+    const videoUrl = await saveFileToCloudinary(videoFile, 'video')
 
     const candidate = await db.candidates.create({
       role: 'candidate',

@@ -80,7 +80,11 @@ Database files are stored in `data/` directory:
 
 2. **Authentication**: Simple password check. Implement bcrypt hashing and JWT tokens for production.
 
-3. **File Uploads**: Currently simulated. Implement actual file storage (AWS S3, Cloudinary, etc.).
+3. **File Uploads**: Uses **Cloudinary**. Set in `.env.local`:
+   - `CLOUDINARY_CLOUD_NAME`
+   - `CLOUDINARY_API_KEY`
+   - `CLOUDINARY_API_SECRET`
+   Get these from [Cloudinary Dashboard](https://console.cloudinary.com/).
 
 4. **Payments**: Demo mode enabled. Integrate real payment gateway (Stripe/PayPal) for production.
 

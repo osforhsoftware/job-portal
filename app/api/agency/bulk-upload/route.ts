@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import path from 'path'
-import fs from 'fs'
 import { db, initializeDatabase } from '@/lib/db'
 import { getDatabase } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import crypto from 'crypto'
 import { extractTextFromBuffer, parseCandidateFromText } from '@/lib/cv-parser'
 import { apiError } from '@/lib/api-utils'
+import { uploadToCloudinary, getResourceType } from '@/lib/cloudinary'
 
 // Allow larger multipart body for bulk CV uploads (e.g. many PDFs)
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
-const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads')
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -22,14 +20,6 @@ const ALLOWED_TYPES = [
 
 function sha256(buffer: Buffer): string {
   return crypto.createHash('sha256').update(buffer).digest('hex')
-}
-
-function ensureUploadsDir() {
-  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true })
-}
-
-function sanitizeFileName(name: string | undefined): string {
-  return (name || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_{2,}/g, '_').slice(0, 100)
 }
 
 export async function POST(request: NextRequest) {
@@ -60,7 +50,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 })
     }
 
-    ensureUploadsDir()
     const dbInstance = await getDatabase()
 
     let successCount = 0
@@ -92,9 +81,6 @@ export async function POST(request: NextRequest) {
           const text = await extractTextFromBuffer(buffer, file.type)
           const parsed = parseCandidateFromText(text, filename)
 
-          console.log(text,"8888");
-          console.log(parsed,"9999999999");
-
           // 🔹 duplicate by contact
           if (parsed.email || parsed.phone) {
             const orConditions: { email?: string; phone?: string }[] = []
@@ -121,12 +107,11 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // 🔹 save file async (non-blocking)
-          const safe = sanitizeFileName(filename)
-          const saved = `cv-${Date.now()}-${safe}`
-          const filepath = path.join(UPLOADS_DIR, saved)
-
-          await fs.promises.writeFile(filepath, buffer)
+          // 🔹 upload CV to Cloudinary
+          const cvUrl = await uploadToCloudinary(buffer, file.type, {
+            folder: 'recruitment/agency-bulk/cv',
+            resource_type: getResourceType(file.type),
+          })
 
           const candidate = await db.candidates.create({
             firstName: parsed.name || 'Unknown',
@@ -138,7 +123,7 @@ export async function POST(request: NextRequest) {
             status: 'available',
             role: 'candidate',
             agencyId,
-            cvUrl: `/uploads/${saved}`,
+            cvUrl,
             password: '',
             isActive: true,
           } as any)

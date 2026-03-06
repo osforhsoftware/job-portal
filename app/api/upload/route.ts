@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import path from 'path'
-import fs from 'fs'
+import { uploadToCloudinary, getResourceType } from '@/lib/cloudinary'
 
 export const runtime = 'nodejs'
-
-const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads')
 
 const ALLOWED_TYPES: Record<string, { mimes: string[]; maxSize: number }> = {
   cv: {
@@ -33,19 +30,6 @@ const ALLOWED_TYPES: Record<string, { mimes: string[]; maxSize: number }> = {
   },
 }
 
-function sanitizeFileName(name: string): string {
-  return name
-    .replace(/[^a-zA-Z0-9._-]/g, '_')
-    .replace(/_{2,}/g, '_')
-    .slice(0, 100)
-}
-
-function ensureUploadsDir() {
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true })
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -58,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     if (!fileType || !ALLOWED_TYPES[fileType]) {
       return NextResponse.json(
-        { error: 'Invalid file type. Must be one of: cv, video, photo, passport' },
+        { error: 'Invalid file type. Must be one of: cv, video, photo, passport, proof' },
         { status: 400 }
       )
     }
@@ -80,29 +64,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    ensureUploadsDir()
-
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const safeName = sanitizeFileName(file.name)
-    const fileName = `${fileType}-${Date.now()}-${safeName}`
-    const filePath = path.join(UPLOADS_DIR, fileName)
+    const resourceType = getResourceType(file.type)
+    const folder = `recruitment/${fileType}`
 
-    fs.writeFileSync(filePath, buffer)
-
-    const url = `/uploads/${fileName}`
+    const url = await uploadToCloudinary(buffer, file.type, {
+      folder,
+      resource_type: resourceType,
+    })
 
     return NextResponse.json({
       success: true,
       url,
-      fileName,
+      fileName: file.name,
       size: file.size,
       type: file.type,
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Upload error:', error)
+    const message = error instanceof Error ? error.message : 'Upload failed. Please try again.'
     return NextResponse.json(
-      { error: 'Upload failed. Please try again.' },
+      { error: message },
       { status: 500 }
     )
   }
