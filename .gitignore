@@ -32,4 +32,4 @@ next-env.d.ts
 
 # temp uploaded files (keep the directory via .gitkeep)
 /public/tmp/uploads/*
-!/public/tmp/uploads/.gitkeep
+/public/tmp/uploads/
