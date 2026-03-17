@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db, type BenefitType, type NationalityType } from '@/lib/db'
+import { db } from '@/lib/db'
+import type { BenefitType, NationalityType } from '@/lib/job-config'
 import { apiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
