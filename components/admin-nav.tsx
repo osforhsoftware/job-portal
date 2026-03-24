@@ -18,12 +18,14 @@ import {
   Settings,
   Shield,
   Tags,
+  FileSpreadsheet,
 } from "lucide-react"
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/approvals", label: "Approvals", icon: UserCheck },
   { href: "/admin/candidates", label: "Candidates", icon: Users },
+  { href: "/admin/bulk-upload-candidates", label: "Bulk Upload", icon: FileSpreadsheet },
   { href: "/admin/agencies", label: "Agencies", icon: Building2 },
   { href: "/admin/companies", label: "Companies", icon: Briefcase },
   { href: "/admin/bids", label: "Bids", icon: DollarSign },

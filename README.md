@@ -207,7 +207,14 @@ Create a `.env.local` file for production:
 DATABASE_URL=your_database_url
 JWT_SECRET=your_jwt_secret
 PAYMENT_API_KEY=your_payment_key
-EMAIL_SERVICE_KEY=your_email_key
+
+# Email (Nodemailer SMTP only — no separate API key)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-account@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM="Your App Name <your-account@gmail.com>"
 ```
 
 ## 📝 API Documentation

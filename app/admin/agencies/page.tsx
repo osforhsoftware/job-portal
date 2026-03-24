@@ -48,6 +48,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { Switch } from "@/components/ui/switch"
 
 interface AgencyRow {
   id: string
@@ -61,6 +62,7 @@ interface AgencyRow {
   proofDocumentUrl?: string
   totalCandidates: number
   createdAt: string
+  bulkUploadAccessEnabled?: boolean
 }
 
 export default function AgenciesManagementPage() {
@@ -176,6 +178,31 @@ export default function AgenciesManagementPage() {
       }
     } catch (error) {
       console.error("Failed to update status:", error)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleBulkUploadAccess = async (agencyId: string, enabled: boolean) => {
+    const key = agencyId + ':bulkUpload'
+    setActionLoading(key)
+    try {
+      const response = await fetch("/api/admin/agencies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "setBulkUploadAccess",
+          agencyId,
+          bulkUploadAccessEnabled: enabled,
+        }),
+      })
+      if (response.ok) {
+        await loadAgencies()
+        // Keep modal in sync
+        setSelectedAgency((prev) => (prev && prev.id === agencyId ? { ...prev, bulkUploadAccessEnabled: enabled } : prev))
+      }
+    } catch (error) {
+      console.error("Failed to update bulk upload access:", error)
     } finally {
       setActionLoading(null)
     }
@@ -722,6 +749,22 @@ export default function AgenciesManagementPage() {
                       </Select>
                     </div>
                   )}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4 space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Bulk Upload Access</p>
+                    <p className="text-xs text-muted-foreground">
+                      When enabled, this agency can use the bulk candidate upload feature.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={!!selectedAgency.bulkUploadAccessEnabled}
+                    onCheckedChange={(checked) => handleBulkUploadAccess(selectedAgency.id, checked)}
+                    disabled={actionLoading === selectedAgency.id + ':bulkUpload'}
+                  />
                 </div>
               </div>
 

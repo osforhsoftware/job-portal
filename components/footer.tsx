@@ -16,7 +16,8 @@ const footerLinks = {
   ],
   forAgencies: [
     { name: "Partner With Us", href: "/register/agency" },
-    { name: "Bulk Upload", href: "/agency/bulk-upload" },
+    { name: "Bulk Upload (CVs)", href: "/agency/bulk-upload" },
+    { name: "Bulk Candidates", href: "/agency/bulk-upload-candidates" },
     { name: "Agency Dashboard", href: "/agency/dashboard" },
     { name: "Commission Rates", href: "/agency/commission" },
   ],

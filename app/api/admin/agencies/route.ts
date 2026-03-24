@@ -46,6 +46,51 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, agency: safe })
     }
 
+    if (action === 'setBulkUploadAccess') {
+      const {
+        bulkUploadAccessEnabled,
+        bulkUploadMonthlyLimit,
+        bulkUploadMaxCandidatesPerBatch,
+      } = body as {
+        bulkUploadAccessEnabled?: boolean
+        bulkUploadMonthlyLimit?: number
+        bulkUploadMaxCandidatesPerBatch?: number
+      }
+
+      if (typeof bulkUploadAccessEnabled !== 'boolean') {
+        return NextResponse.json(
+          { error: 'bulkUploadAccessEnabled must be a boolean' },
+          { status: 400 }
+        )
+      }
+
+      const nextUpdates: Record<string, unknown> = {
+        bulkUploadAccessEnabled,
+      }
+
+      if (bulkUploadMonthlyLimit !== undefined) {
+        if (typeof bulkUploadMonthlyLimit !== 'number') {
+          return NextResponse.json({ error: 'bulkUploadMonthlyLimit must be a number' }, { status: 400 })
+        }
+        nextUpdates.bulkUploadMonthlyLimit = bulkUploadMonthlyLimit
+      }
+
+      if (bulkUploadMaxCandidatesPerBatch !== undefined) {
+        if (typeof bulkUploadMaxCandidatesPerBatch !== 'number') {
+          return NextResponse.json({ error: 'bulkUploadMaxCandidatesPerBatch must be a number' }, { status: 400 })
+        }
+        nextUpdates.bulkUploadMaxCandidatesPerBatch = bulkUploadMaxCandidatesPerBatch
+      }
+
+      await db.agencies.update(agencyId, nextUpdates as any)
+
+      const updatedAgency = await db.agencies.getById(agencyId)
+      if (!updatedAgency) return NextResponse.json({ success: true, agency: null })
+      const { password, ...safe } = updatedAgency as any
+
+      return NextResponse.json({ success: true, agency: safe })
+    }
+
     if (action === 'reject') {
       await db.agencies.update(agencyId, {
         approvalStatus: 'rejected',

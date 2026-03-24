@@ -77,6 +77,16 @@ export interface Candidate {
   status: 'available' | 'under_bidding' | 'interviewed' | 'selected' | 'on_hold'
   visaCategory?: string
   salaryRange?: { min: number; max: number }
+  /** UI alias for expected salary (bulk upload / forms) */
+  salaryExpectation?: string
+  visaValidity?: string
+  visaStatus?: string
+  remarks?: string
+  currentStatus?: string
+  howYouKnowAboutUs?: string
+  nextStep?: string
+  candidateSelected?: boolean
+  uploadBatchId?: string
   createdAt: string
   updatedAt: string
 }
@@ -97,6 +107,11 @@ export interface Agency {
   subscriptionPlan: 'basic' | 'silver' | 'gold' | 'platinum'
   subscriptionStatus: 'active' | 'expired' | 'cancelled'
   subscriptionExpiresAt?: string
+  // Bulk upload feature access (Superadmin-managed)
+  bulkUploadAccessEnabled?: boolean
+  bulkUploadMonthlyLimit?: number // -1 for unlimited
+  bulkUploadMaxCandidatesPerBatch?: number // -1 for unlimited (or a large number)
+  bulkUploadStorageLimitMB?: number // optional
   // Limits based on plan
   cvUploadLimit: number
   cvUploadsUsed: number
@@ -1312,6 +1327,10 @@ export async function initializeDatabase() {
     await database.collection('jobSubCategories').createIndex({ sortOrder: 1 })
     await database.collection('candidateSources').createIndex({ agencyId: 1 })
     await database.collection('candidateSources').createIndex({ agentId: 1 })
+    await database.collection('uploadBatches').createIndex({ agencyId: 1, uploadedAt: -1 })
+    await database.collection('uploadBatches').createIndex({ uploadedBy: 1, uploadedAt: -1 })
+    await database.collection('candidateFiles').createIndex({ candidateId: 1 })
+    await database.collection('candidateFiles').createIndex({ fileName: 1 })
     await database.collection('notifications').createIndex({ recipientType: 1, recipientId: 1 })
     await database.collection('notifications').createIndex({ createdAt: -1 })
   } catch (e) {
