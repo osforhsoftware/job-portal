@@ -1,46 +1,44 @@
 import { NextResponse } from "next/server"
-
-import fs from "fs"
-import path from "path"
+import { City } from "country-state-city"
 
 export const runtime = "nodejs"
-
-function findCountryFolder(dataDir: string, countryCode: string) {
-  // Folder format: SomethingLike_United_States-US (ends with -{ISO2})
-  const entries = fs.readdirSync(dataDir, { withFileTypes: true })
-  const folder = entries
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .find((name) => name.toUpperCase().endsWith(`-${countryCode}`))
-  return folder || null
-}
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+
     const country = searchParams.get("country")
-    if (!country) {
-      return NextResponse.json({ error: "Missing country" }, { status: 400 })
+    const state = searchParams.get("state")
+
+    // Validation
+    if (!country || !state) {
+      return NextResponse.json(
+        { error: "Missing country or state" },
+        { status: 400 }
+      )
     }
 
     const countryCode = country.toUpperCase()
-    const baseDir = path.join(process.cwd(), "node_modules", "@countrystatecity", "countries", "dist", "data")
-    const countryFolder = findCountryFolder(baseDir, countryCode)
-    if (!countryFolder) return NextResponse.json({ states: [] })
+    const stateCode = state.toUpperCase()
 
-    const statesPath = path.join(baseDir, countryFolder, "states.json")
-    const raw = fs.readFileSync(statesPath, "utf-8")
-    const states = JSON.parse(raw) as any[]
+    // Get cities using library (NO fs)
+    const cities = City.getCitiesOfState(countryCode, stateCode)
 
+    // Format response
     return NextResponse.json({
-      states: (states || []).map((s) => ({
-        iso2: s.iso2,
-        name: s.name,
+      cities: (cities || []).map((city) => ({
+        name: city.name,
+        latitude: city.latitude,
+        longitude: city.longitude,
       })),
     })
+
   } catch (error) {
-    console.error("Geo states fetch error:", error)
-    return NextResponse.json({ error: "Failed to load states" }, { status: 500 })
+    console.error("Geo cities fetch error:", error)
+
+    return NextResponse.json(
+      { error: "Failed to load cities" },
+      { status: 500 }
+    )
   }
 }
-
