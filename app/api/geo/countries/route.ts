@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server"
-import { getCountries } from "@countrystatecity/countries"
+import { Country } from "country-state-city"
 
 export const runtime = "nodejs"
 
 export async function GET() {
   try {
-    const countries = await getCountries()
+    const countries = Country.getAllCountries()
     return NextResponse.json({
-      countries: (countries || []).map((c: any) => ({
-        iso2: c.iso2,
+      countries: (countries || []).map((c) => ({
+        iso2: c.isoCode,
         name: c.name,
       })),
     })
