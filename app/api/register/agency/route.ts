@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
 import { apiError } from '@/lib/api-utils'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
+
+  let body: any = {}
   try {
     await initializeDatabase()
-    const body = await request.json()
+    body = await request.json()
     const { name, email, phone, password, proofDocumentUrl } = body
 
     if (!name || !email || !phone || !password) {
@@ -61,11 +66,33 @@ export async function POST(request: NextRequest) {
       totalCommission: 0,
     })
 
+    await logActivity({
+      userType: 'agency',
+      entityType: 'agency',
+      entityId: agency.id,
+      action: 'register',
+      description: `New agency "${name}" registered`,
+      metadata: { name, email, phone },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
+
     return NextResponse.json({
       success: true,
       message: 'Agency registered successfully. Your account is pending admin approval.',
     })
   } catch (error) {
+    await logActivity({
+      userType: 'agency',
+      entityType: 'agency',
+      action: 'register',
+      description: `Agency registration failed for "${body?.name || 'unknown'}"`,
+      metadata: { email: body?.email, error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    })
     return apiError(error, 500)
   }
 }

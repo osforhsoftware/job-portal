@@ -45,7 +45,6 @@
     "autoprefixer": "^10.4.20",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
-    "cloudinary": "^2.9.0",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "cors": "^2.8.6",
@@ -75,6 +74,7 @@
     "tailwindcss-animate": "^1.0.7",
     "unzipper": "^0.12.3",
     "vaul": "^1.1.2",
+    "xlsx": "^0.18.5",
     "zod": "3.25.76"
   },
   "devDependencies": {

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
 import { apiError } from '@/lib/api-utils'
-import { uploadToCloudinary, getResourceType, CLOUDINARY_FOLDERS } from '@/lib/cloudinary'
+import { saveFile } from '@/lib/file-storage'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export const runtime = 'nodejs'
 
@@ -17,22 +18,18 @@ const ALLOWED_VIDEO_TYPES = [
 const MAX_CV_SIZE = 5 * 1024 * 1024       // 5 MB
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024    // 50 MB
 
-async function saveFileToCloudinary(file: File, prefix: string): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const resourceType = getResourceType(file.type)
-  return uploadToCloudinary(buffer, file.type, {
-    folder: `${CLOUDINARY_FOLDERS.CANDIDATE_CV}/${prefix}`,
-    resource_type: resourceType,
-  })
-}
-
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
+  let fullName = ''
+  let email = ''
+
   try {
     await initializeDatabase()
     const formData = await request.formData()
 
-    const fullName = formData.get('fullName') as string
-    const email = formData.get('email') as string
+    fullName = formData.get('fullName') as string
+    email = formData.get('email') as string
     const whatsapp = formData.get('whatsapp') as string
     const gender = formData.get('gender') as string
     const nationality = formData.get('nationality') as string
@@ -159,22 +156,41 @@ export async function POST(request: NextRequest) {
     // Resolve referral: ref can be agent's referralCode (e.g. AGT...) or agency's referralLink (ref_...)
     let agencyId: string | undefined
     let agentId: string | undefined
+    let referralResolvedAgency = false
     if (referralCodeOrLink) {
       const agentByCode = await db.agents.getByReferralCode(referralCodeOrLink)
       if (agentByCode) {
         agentId = agentByCode.id
         agencyId = agentByCode.agencyId
+        referralResolvedAgency = true
       } else {
         const agencyByLink = await db.agencies.getByReferralLink(referralCodeOrLink)
         if (agencyByLink) {
           agencyId = agencyByLink.id
+          referralResolvedAgency = true
         }
       }
     }
 
-    // Save files to Cloudinary
-    const cvUrl = await saveFileToCloudinary(cvFile, 'cv')
-    const videoUrl = videoFile ? await saveFileToCloudinary(videoFile, 'video') : undefined
+    // Super Admin default agency (only when no referral agency)
+    if (!agencyId) {
+      const defaultSetting = await db.settings.get('defaultAgencyId')
+      const rawDefault =
+        typeof defaultSetting?.value === 'string' ? defaultSetting.value.trim() : ''
+      if (rawDefault) {
+        const defaultAgency = await db.agencies.getById(rawDefault)
+        if (
+          defaultAgency &&
+          defaultAgency.approvalStatus === 'approved' &&
+          defaultAgency.isActive
+        ) {
+          agencyId = defaultAgency.id
+        }
+      }
+    }
+
+    const { url: cvUrl } = await saveFile(cvFile, 'cv')
+    const videoUrl = videoFile ? (await saveFile(videoFile, 'video')).url : undefined
 
     const candidate = await db.candidates.create({
       role: 'candidate',
@@ -209,12 +225,20 @@ export async function POST(request: NextRequest) {
     })
 
     if (agencyId) {
-      await db.candidateSources.create({
-        candidateId: candidate.id,
-        agentId: agentId || undefined,
-        agencyId,
-        sourceType: agentId ? 'referral' : 'link',
-      })
+      if (referralResolvedAgency) {
+        await db.candidateSources.create({
+          candidateId: candidate.id,
+          agentId: agentId || undefined,
+          agencyId,
+          sourceType: agentId ? 'referral' : 'link',
+        })
+      } else {
+        await db.candidateSources.create({
+          candidateId: candidate.id,
+          agencyId,
+          sourceType: 'default_registration',
+        })
+      }
     }
     if (agentId) {
       const agent = await db.agents.getById(agentId)
@@ -225,6 +249,18 @@ export async function POST(request: NextRequest) {
         })
       }
     }
+
+    await logActivity({
+      userType: 'candidate',
+      entityType: 'candidate',
+      entityId: candidate.id,
+      action: 'register',
+      description: `New candidate "${fullName}" registered`,
+      metadata: { fullName, email, whatsapp, gender, nationality, jobCategories, totalExperience, qualification },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
 
     return NextResponse.json({
       success: true,
@@ -238,6 +274,16 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
+    await logActivity({
+      userType: 'candidate',
+      entityType: 'candidate',
+      action: 'register',
+      description: `Candidate registration failed for "${fullName || 'unknown'}"`,
+      metadata: { email, error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    })
     return apiError(error, 500)
   }
 }

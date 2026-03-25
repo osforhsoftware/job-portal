@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function GET() {
   try {
@@ -19,7 +20,9 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { action, companyId, subscriptionPlan, subscriptionStatus, ...rest } = body as {
@@ -47,6 +50,7 @@ export async function POST(request: Request) {
       const updated = await db.companies.getById(companyId)
       if (!updated) return NextResponse.json({ success: true, company: null })
       const { password, ...safe } = updated as any
+      await logActivity({ userType: 'superadmin', entityType: 'company', entityId: companyId, action: 'approve_company', description: `Approved company ${company.name}`, metadata: { companyName: company.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, company: safe })
     }
 
@@ -58,6 +62,7 @@ export async function POST(request: Request) {
       const updated = await db.companies.getById(companyId)
       if (!updated) return NextResponse.json({ success: true, company: null })
       const { password, ...safe } = updated as any
+      await logActivity({ userType: 'superadmin', entityType: 'company', entityId: companyId, action: 'reject_company', description: `Rejected company ${company.name}`, metadata: { companyName: company.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, company: safe })
     }
 
@@ -66,6 +71,7 @@ export async function POST(request: Request) {
       const updated = await db.companies.getById(companyId)
       if (!updated) return NextResponse.json({ success: true, company: null })
       const { password, ...safe } = updated as any
+      await logActivity({ userType: 'superadmin', entityType: 'company', entityId: companyId, action: 'set_active', description: `Set company ${company.name} to active`, metadata: { companyName: company.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, company: safe })
     }
 
@@ -74,6 +80,7 @@ export async function POST(request: Request) {
       const updated = await db.companies.getById(companyId)
       if (!updated) return NextResponse.json({ success: true, company: null })
       const { password, ...safe } = updated as any
+      await logActivity({ userType: 'superadmin', entityType: 'company', entityId: companyId, action: 'set_inactive', description: `Set company ${company.name} to inactive`, metadata: { companyName: company.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, company: safe })
     }
 
@@ -89,15 +96,16 @@ export async function POST(request: Request) {
       const updated = await db.companies.getById(companyId)
       if (!updated) return NextResponse.json({ success: true, company: null })
       const { password, ...safe } = updated as any
+      await logActivity({ userType: 'superadmin', entityType: 'company', entityId: companyId, action: 'update_subscription', description: `Updated subscription for company ${company.name}`, metadata: { companyName: company.name, subscriptionPlan, subscriptionStatus }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, company: safe })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
+    await logActivity({ userType: 'superadmin', entityType: 'company', action: 'company_action', description: 'Company action failed', metadata: { error: String(error) }, status: 'failed', ip, userAgent: ua })
     return NextResponse.json(
       { error: 'Failed to update company' },
       { status: 500 }
     )
   }
 }
-

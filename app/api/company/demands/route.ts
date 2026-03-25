@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import type { BenefitType, NationalityType } from '@/lib/job-config'
 import { apiError } from '@/lib/api-utils'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,6 +20,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const {
@@ -146,12 +149,36 @@ export async function POST(request: NextRequest) {
       }).catch(() => {})
     }
 
+    await logActivity({
+      userId: createdByUserId,
+      userName: createdByEmployeeName,
+      userType: 'company',
+      entityType: 'demand',
+      entityId: created[0]?.id,
+      action: 'create',
+      description: `Created ${created.length} demand(s) for ${name}`,
+      metadata: { companyId, roles: created.map(d => ({ id: d.id, jobTitle: d.jobTitle, quantity: d.quantity })) },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
+
     return NextResponse.json({
       success: true,
       message: `Created ${created.length} demand(s)`,
       demands: created,
     })
   } catch (error) {
+    await logActivity({
+      userType: 'company',
+      entityType: 'demand',
+      action: 'create',
+      description: 'Failed to create demand(s)',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return apiError(error, 500)
   }
 }

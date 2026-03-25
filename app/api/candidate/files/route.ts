@@ -1,36 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
-import { uploadToCloudinary, getResourceType, CLOUDINARY_FOLDERS } from '@/lib/cloudinary'
+import { deleteUploadIfExists, saveFile } from '@/lib/file-storage'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export const runtime = 'nodejs'
 
-const ALLOWED_CV_TYPES = ['application/pdf']
-const ALLOWED_VIDEO_TYPES = [
-  'video/webm',
-  'video/mp4',
-  'video/quicktime',
-  'video/x-msvideo',
-  'video/x-matroska',
-]
-const MAX_CV_SIZE = 5 * 1024 * 1024
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024
-
-async function saveFileToCloudinary(file: File, prefix: string): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const resourceType = getResourceType(file.type)
-  const url = await uploadToCloudinary(buffer, file.type, {
-    folder: `${CLOUDINARY_FOLDERS.CANDIDATE_CV}/${prefix}`,
-    resource_type: resourceType,
-  })
-  return url
-}
-
-// No-op for cloud URLs; local paths are no longer used
-function deleteOldFile(_fileUrl: string | undefined) {
-  // Files are now on Cloudinary; optional: implement Cloudinary delete by public_id if needed
-}
-
-// GET - Fetch candidate's current files info
 export async function GET(request: NextRequest) {
   try {
     await initializeDatabase()
@@ -57,8 +31,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Upload or replace CV / video for an existing candidate
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     await initializeDatabase()
     const formData = await request.formData()
@@ -83,31 +58,32 @@ export async function POST(request: NextRequest) {
     const updates: Record<string, string> = {}
 
     if (cvFile) {
-      if (!ALLOWED_CV_TYPES.includes(cvFile.type)) {
-        return NextResponse.json({ error: 'CV must be a PDF file' }, { status: 400 })
-      }
-      if (cvFile.size > MAX_CV_SIZE) {
-        return NextResponse.json({ error: 'CV must be under 5 MB' }, { status: 400 })
-      }
-      deleteOldFile(candidate.cvUrl)
-      updates.cvUrl = await saveFileToCloudinary(cvFile, 'cv')
+      const saved = await saveFile(cvFile, 'cv', { userId: candidateId })
+      await deleteUploadIfExists(candidate.cvUrl)
+      updates.cvUrl = saved.url
     }
 
     if (videoFile) {
-      if (!ALLOWED_VIDEO_TYPES.includes(videoFile.type)) {
-        return NextResponse.json(
-          { error: 'Video must be MP4, WebM, MOV, AVI, or MKV' },
-          { status: 400 }
-        )
-      }
-      if (videoFile.size > MAX_VIDEO_SIZE) {
-        return NextResponse.json({ error: 'Video must be under 50 MB' }, { status: 400 })
-      }
-      deleteOldFile(candidate.videoUrl)
-      updates.videoUrl = await saveFileToCloudinary(videoFile, 'video')
+      const saved = await saveFile(videoFile, 'video', { userId: candidateId })
+      await deleteUploadIfExists(candidate.videoUrl)
+      updates.videoUrl = saved.url
     }
 
     await db.candidates.update(candidateId, updates)
+
+    const uploadedTypes = Object.keys(updates).map(k => k.replace('Url', ''))
+    await logActivity({
+      userId: candidateId,
+      userType: 'candidate',
+      entityType: 'file',
+      entityId: candidateId,
+      action: 'create',
+      description: `Candidate uploaded file(s): ${uploadedTypes.join(', ')}`,
+      metadata: { candidateId, fileTypes: uploadedTypes },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
 
     return NextResponse.json({
       success: true,
@@ -116,6 +92,16 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: unknown) {
     console.error('File update error:', error)
+    await logActivity({
+      userType: 'candidate',
+      entityType: 'file',
+      action: 'create',
+      description: 'Failed to upload candidate file(s)',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     const message = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json({ error: message }, { status: 500 })
   }

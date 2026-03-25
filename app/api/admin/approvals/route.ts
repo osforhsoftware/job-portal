@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function GET() {
   try {
@@ -59,6 +60,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { action, type, id } = body
@@ -89,6 +92,7 @@ export async function POST(request: NextRequest) {
           message: 'Your agency account has been approved. You can now sign in and start using the platform.',
           link: '/agency/dashboard',
         }).catch(() => {})
+        await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: id, action: 'approve_agency', description: `Approved agency ${agency.name}`, metadata: { agencyName: agency.name }, status: 'success', ip, userAgent: ua })
         return NextResponse.json({ success: true, message: 'Agency approved' })
       }
       if (type === 'company') {
@@ -109,6 +113,7 @@ export async function POST(request: NextRequest) {
           message: 'Your company account has been approved. You can now sign in and start using the platform.',
           link: '/company/dashboard',
         }).catch(() => {})
+        await logActivity({ userType: 'superadmin', entityType: 'company', entityId: id, action: 'approve_company', description: `Approved company ${company.name}`, metadata: { companyName: company.name }, status: 'success', ip, userAgent: ua })
         return NextResponse.json({ success: true, message: 'Company approved' })
       }
     }
@@ -131,6 +136,7 @@ export async function POST(request: NextRequest) {
           message: 'Your agency registration was rejected. Please contact support for more information.',
           link: '/',
         }).catch(() => {})
+        await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: id, action: 'reject_agency', description: `Rejected agency ${agency.name}`, metadata: { agencyName: agency.name }, status: 'success', ip, userAgent: ua })
         return NextResponse.json({ success: true, message: 'Agency rejected' })
       }
       if (type === 'company') {
@@ -147,6 +153,7 @@ export async function POST(request: NextRequest) {
           message: 'Your company registration was rejected. Please contact support for more information.',
           link: '/',
         }).catch(() => {})
+        await logActivity({ userType: 'superadmin', entityType: 'company', entityId: id, action: 'reject_company', description: `Rejected company ${company.name}`, metadata: { companyName: company.name }, status: 'success', ip, userAgent: ua })
         return NextResponse.json({ success: true, message: 'Company rejected' })
       }
     }
@@ -154,6 +161,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid action or type' }, { status: 400 })
   } catch (error) {
     console.error('Approval action error:', error)
+    await logActivity({ userType: 'superadmin', entityType: 'agency', action: 'approval_action', description: 'Approval action failed', metadata: { error: String(error) }, status: 'failed', ip, userAgent: ua })
     return NextResponse.json(
       { error: 'Failed to process approval' },
       { status: 500 }

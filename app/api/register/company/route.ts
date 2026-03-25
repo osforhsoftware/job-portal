@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
 import { apiError } from '@/lib/api-utils'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
+  let body: any = {}
+
   try {
     await initializeDatabase()
-    const body = await request.json()
+    body = await request.json()
     const {
       companyName,
       tradeLicense,
@@ -105,6 +110,18 @@ export async function POST(request: NextRequest) {
       totalHires: 0,
     })
 
+    await logActivity({
+      userType: 'company',
+      entityType: 'company',
+      entityId: company.id,
+      action: 'register',
+      description: `New company "${companyName}" registered`,
+      metadata: { companyName, contactEmail, contactPhone, industry, companySize, country, city },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
+
     return NextResponse.json({
       success: true,
       user: {
@@ -122,6 +139,16 @@ export async function POST(request: NextRequest) {
       message: 'Company registered successfully. You can now log in.',
     })
   } catch (error) {
+    await logActivity({
+      userType: 'company',
+      entityType: 'company',
+      action: 'register',
+      description: `Company registration failed for "${body?.companyName || 'unknown'}"`,
+      metadata: { contactEmail: body?.contactEmail, error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    })
     return apiError(error, 500)
   }
 }

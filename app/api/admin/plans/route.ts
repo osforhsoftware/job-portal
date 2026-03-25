@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, Plan } from '@/lib/db'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function GET() {
   try {
@@ -32,6 +33,8 @@ function parsePlanBody(body: any): Omit<Plan, 'id' | 'createdAt'> | null {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const plan = parsePlanBody(body)
@@ -42,9 +45,11 @@ export async function POST(request: NextRequest) {
       )
     }
     const created = await db.plans.create(plan)
+    await logActivity({ userType: 'superadmin', entityType: 'plan', entityId: created.id, action: 'create_plan', description: `Created plan ${plan.name}`, metadata: { planName: plan.name, type: plan.type, level: plan.level, price: plan.price }, status: 'success', ip, userAgent: ua })
     return NextResponse.json({ success: true, plan: created })
   } catch (error) {
     console.error('Plan create error:', error)
+    await logActivity({ userType: 'superadmin', entityType: 'plan', action: 'create_plan', description: 'Plan creation failed', metadata: { error: String(error) }, status: 'failed', ip, userAgent: ua })
     return NextResponse.json(
       { error: 'Failed to create plan' },
       { status: 500 }
@@ -53,6 +58,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { id, ...updates } = body
@@ -77,9 +84,11 @@ export async function PATCH(request: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
+    await logActivity({ userType: 'superadmin', entityType: 'plan', entityId: planId, action: 'update_plan', description: `Updated plan ${updated.name}`, metadata: { planName: updated.name, updates: sanitized }, status: 'success', ip, userAgent: ua })
     return NextResponse.json({ success: true, plan: updated })
   } catch (error) {
     console.error('Plan update error:', error)
+    await logActivity({ userType: 'superadmin', entityType: 'plan', action: 'update_plan', description: 'Plan update failed', metadata: { error: String(error) }, status: 'failed', ip, userAgent: ua })
     return NextResponse.json(
       { error: 'Failed to update plan' },
       { status: 500 }

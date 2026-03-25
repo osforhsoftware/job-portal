@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto'
 import { db, initializeDatabase } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
 import { apiError } from '@/lib/api-utils'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,6 +24,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     await initializeDatabase()
     const body = await request.json()
@@ -67,8 +70,34 @@ export async function POST(request: NextRequest) {
     })
 
     const { password: _pw, ...userWithoutPassword } = created
+
+    await logActivity({
+      userId: created.id,
+      userName: created.name,
+      userEmail: normalizedEmail,
+      userType: 'company',
+      entityType: 'company',
+      entityId: companyId,
+      action: 'create',
+      description: `Created company staff user "${name}" (${normalizedEmail})`,
+      metadata: { companyId, newUserId: created.id },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
+
     return NextResponse.json({ success: true, user: userWithoutPassword })
   } catch (error) {
+    await logActivity({
+      userType: 'company',
+      entityType: 'company',
+      action: 'create',
+      description: 'Failed to create company staff user',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return apiError(error, 500)
   }
 }

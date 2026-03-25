@@ -3,10 +3,13 @@ import crypto from 'crypto'
 import { db, initializeDatabase } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
 import { sendPasswordResetEmail } from '@/lib/email'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function POST(request: NextRequest) {
   try {
     await initializeDatabase()
+    const ip = getClientIp(request)
+    const ua = getUserAgent(request)
     const { email } = await request.json()
 
     if (!email || typeof email !== 'string') {
@@ -25,6 +28,16 @@ export async function POST(request: NextRequest) {
     const account = admin || agency || company || agent || candidate
 
     if (!account) {
+      await logActivity({
+        userType: 'system',
+        entityType: 'login',
+        action: 'forgot_password',
+        description: `Forgot password attempted for unknown email: ${normalizedEmail}`,
+        metadata: { email: normalizedEmail },
+        status: 'failed',
+        ip,
+        userAgent: ua,
+      })
       return NextResponse.json(
         { error: 'No account found with this email address.' },
         { status: 404 }
@@ -35,6 +48,16 @@ export async function POST(request: NextRequest) {
     const allowedRoles = ['agency', 'company', 'corporate', 'admin', 'super_admin', 'agent', 'candidate']
     const role = (account as any).role
     if (!allowedRoles.includes(role)) {
+      await logActivity({
+        userType: 'system',
+        entityType: 'login',
+        action: 'forgot_password',
+        description: `Forgot password attempted for disallowed role: ${role}`,
+        metadata: { email: normalizedEmail, role },
+        status: 'failed',
+        ip,
+        userAgent: ua,
+      })
       return NextResponse.json(
         { error: 'No account found with this email address.' },
         { status: 404 }
@@ -66,6 +89,22 @@ export async function POST(request: NextRequest) {
 
     // Send reset email only after confirming email is registered
     await sendPasswordResetEmail(normalizedEmail, resetLink)
+
+    const userType = role === 'super_admin' ? 'superadmin' : role === 'corporate' ? 'company' : role
+    await logActivity({
+      userId: (account as any).id,
+      userName: (account as any).name,
+      userEmail: normalizedEmail,
+      userType: userType as any,
+      entityType: 'login',
+      entityId: (account as any).id,
+      action: 'forgot_password',
+      description: `Password reset requested for ${normalizedEmail}`,
+      metadata: { email: normalizedEmail, role },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
 
     return NextResponse.json({
       success: true,

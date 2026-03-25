@@ -3,11 +3,15 @@ import { db, initializeDatabase } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
 import { importBulkUploadCandidates, validateBulkUploadCandidates } from '@/lib/bulk-upload-candidates'
 import { sendBulkUploadCompletedEmail } from '@/lib/email'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
+
   try {
     await initializeDatabase()
     const formData = await request.formData()
@@ -94,9 +98,22 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    await logActivity({
+      userId: agencyId,
+      userName: agency.name,
+      userType: 'agency',
+      entityType: 'bulk',
+      entityId: result.batchId,
+      action: 'create',
+      description: `Bulk candidate import completed: ${result.successfulUploads} candidates imported`,
+      metadata: { batchId: result.batchId, successfulUploads: result.successfulUploads, spreadsheetFileName, cvFileCount: cvFiles.length, uploadedBy, agentId },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
+
     return NextResponse.json({ success: true, ...result })
   } catch (error) {
-    // If importBulkUploadCandidates throws with validation attached, pass it back
     if (error && typeof error === 'object' && 'validation' in (error as any)) {
       const validation = (error as any).validation
       return NextResponse.json({
@@ -108,7 +125,17 @@ export async function POST(request: NextRequest) {
         errorReportBase64: validation?.errorReportBase64,
       })
     }
+    await logActivity({
+      userId: 'unknown',
+      userType: 'agency',
+      entityType: 'bulk',
+      action: 'create',
+      description: 'Failed to import bulk upload candidates',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    })
     return apiError(error, 400)
   }
 }
-

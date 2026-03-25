@@ -3,11 +3,14 @@ import { db, initializeDatabase } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
 import { importBulkUploadCandidates, validateBulkUploadCandidates } from '@/lib/bulk-upload-candidates'
 import { sendBulkUploadCompletedEmail } from '@/lib/email'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     await initializeDatabase()
     const formData = await request.formData()
@@ -91,10 +94,38 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    await logActivity({
+      userId: uploadedBy || 'system',
+      userName: uploadedByName || 'Admin',
+      userEmail: uploadedByEmail || '',
+      userType: 'superadmin',
+      entityType: 'bulk',
+      entityId: result.batchId,
+      action: 'import',
+      description: `Bulk imported ${result.successfulUploads} candidates for agency: ${agency.name}`,
+      metadata: { agencyId, agencyName: agency.name, batchId: result.batchId, successfulUploads: result.successfulUploads, spreadsheetFileName },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
+
     return NextResponse.json({ success: true, ...result })
   } catch (error) {
     if (error && typeof error === 'object' && 'validation' in (error as any)) {
       const validation = (error as any).validation
+      await logActivity({
+        userId: 'system',
+        userName: 'Admin',
+        userEmail: '',
+        userType: 'superadmin',
+        entityType: 'bulk',
+        entityId: '',
+        action: 'import',
+        description: `Bulk import validation failed: ${(error as Error).message}`,
+        status: 'failed',
+        ip,
+        userAgent: ua,
+      }).catch(() => {})
       return NextResponse.json({
         success: false,
         error: (error as Error).message,
@@ -104,7 +135,19 @@ export async function POST(request: NextRequest) {
         errorReportBase64: validation?.errorReportBase64,
       })
     }
+    await logActivity({
+      userId: 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'bulk',
+      entityId: '',
+      action: 'import',
+      description: `Failed bulk import: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return apiError(error, 400)
   }
 }
-

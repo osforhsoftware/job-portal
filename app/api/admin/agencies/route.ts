@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function GET() {
   try {
@@ -19,7 +20,9 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { action, agencyId, ...updates } = body
@@ -43,6 +46,7 @@ export async function POST(request: Request) {
       const updatedAgency = await db.agencies.getById(agencyId)
       if (!updatedAgency) return NextResponse.json({ success: true, agency: null })
       const { password, ...safe } = updatedAgency as any
+      await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: agencyId, action: 'approve_agency', description: `Approved agency ${agency.name}`, metadata: { agencyName: agency.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, agency: safe })
     }
 
@@ -88,6 +92,7 @@ export async function POST(request: Request) {
       if (!updatedAgency) return NextResponse.json({ success: true, agency: null })
       const { password, ...safe } = updatedAgency as any
 
+      await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: agencyId, action: 'set_bulk_upload_access', description: `Set bulk upload access for agency ${agency.name} to ${bulkUploadAccessEnabled}`, metadata: { agencyName: agency.name, bulkUploadAccessEnabled, bulkUploadMonthlyLimit, bulkUploadMaxCandidatesPerBatch }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, agency: safe })
     }
 
@@ -99,6 +104,7 @@ export async function POST(request: Request) {
       const updatedAgency = await db.agencies.getById(agencyId)
       if (!updatedAgency) return NextResponse.json({ success: true, agency: null })
       const { password, ...safe } = updatedAgency as any
+      await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: agencyId, action: 'reject_agency', description: `Rejected agency ${agency.name}`, metadata: { agencyName: agency.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, agency: safe })
     }
 
@@ -111,6 +117,7 @@ export async function POST(request: Request) {
       const updatedAgency = await db.agencies.getById(agencyId)
       if (!updatedAgency) return NextResponse.json({ success: true, agency: null })
       const { password, ...safe } = updatedAgency as any
+      await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: agencyId, action: 'deactivate_agency', description: `Deactivated agency ${agency.name}`, metadata: { agencyName: agency.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, agency: safe })
     }
 
@@ -122,6 +129,7 @@ export async function POST(request: Request) {
       const updatedAgency = await db.agencies.getById(agencyId)
       if (!updatedAgency) return NextResponse.json({ success: true, agency: null })
       const { password, ...safe } = updatedAgency as any
+      await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: agencyId, action: 'move_to_spam', description: `Moved agency ${agency.name} to spam`, metadata: { agencyName: agency.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, agency: safe })
     }
 
@@ -130,6 +138,7 @@ export async function POST(request: Request) {
       const updatedAgency = await db.agencies.getById(agencyId)
       if (!updatedAgency) return NextResponse.json({ success: true, agency: null })
       const { password, ...safe } = updatedAgency as any
+      await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: agencyId, action: 'set_active', description: `Set agency ${agency.name} to active`, metadata: { agencyName: agency.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, agency: safe })
     }
 
@@ -138,6 +147,7 @@ export async function POST(request: Request) {
       const updatedAgency = await db.agencies.getById(agencyId)
       if (!updatedAgency) return NextResponse.json({ success: true, agency: null })
       const { password, ...safe } = updatedAgency as any
+      await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: agencyId, action: 'set_inactive', description: `Set agency ${agency.name} to inactive`, metadata: { agencyName: agency.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, agency: safe })
     }
 
@@ -153,6 +163,7 @@ export async function POST(request: Request) {
       if (!deleted) {
         return NextResponse.json({ error: 'Failed to delete agency' }, { status: 500 })
       }
+      await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: agencyId, action: 'delete_agency', description: `Permanently deleted spam agency ${agency.name}`, metadata: { agencyName: agency.name }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, deleted: true })
     }
 
@@ -181,11 +192,13 @@ export async function POST(request: Request) {
       const updatedAgency = await db.agencies.getById(agencyId)
       if (!updatedAgency) return NextResponse.json({ success: true, agency: null })
       const { password, ...safe } = updatedAgency as any
+      await logActivity({ userType: 'superadmin', entityType: 'agency', entityId: agencyId, action: 'update_status', description: `Updated agency ${agency.name} status to ${approvalStatus}`, metadata: { agencyName: agency.name, approvalStatus, isActive }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, agency: safe })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
+    await logActivity({ userType: 'superadmin', entityType: 'agency', action: 'agency_action', description: 'Agency action failed', metadata: { error: String(error) }, status: 'failed', ip, userAgent: ua })
     return NextResponse.json(
       { error: 'Failed to update agency' },
       { status: 500 }

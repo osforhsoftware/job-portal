@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
+
   try {
     const body = await request.json()
     const { demandId, candidateIds, agencyId, agentId } = body
@@ -58,9 +62,33 @@ export async function POST(request: NextRequest) {
       results.push({ candidateId, status: 'submitted', applicationId: application.id })
     }
 
+    await logActivity({
+      userId: agencyId,
+      userType: 'agency',
+      entityType: 'submission',
+      entityId: demandId,
+      action: 'create',
+      description: `Applied ${results.filter(r => r.status === 'submitted').length} candidates to demand: ${demand.jobTitle}`,
+      metadata: { demandId, candidateIds, submitted: results.filter(r => r.status === 'submitted').length, duplicates: results.filter(r => r.status === 'duplicate').length },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
+
     return NextResponse.json({ success: true, results })
   } catch (error) {
     console.error('Failed to apply candidates:', error)
+    await logActivity({
+      userId: 'unknown',
+      userType: 'agency',
+      entityType: 'submission',
+      action: 'create',
+      description: 'Failed to apply candidates to demand',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    })
     return NextResponse.json({ error: 'Failed to submit applications' }, { status: 500 })
   }
 }

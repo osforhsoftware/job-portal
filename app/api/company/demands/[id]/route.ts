@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function GET(
   _request: NextRequest,
@@ -20,6 +21,8 @@ export async function PATCH(
   request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const { id: demandId } = await ctx.params
     const body = await request.json()
@@ -69,12 +72,36 @@ export async function PATCH(
       }).catch(() => {})
     }
 
+    await logActivity({
+      userId: requestedByUserId,
+      userName: requestedByEmployeeName,
+      userType: 'company',
+      entityType: 'demand',
+      entityId: demandId,
+      action: 'update',
+      description: `Submitted edit request for demand "${demand.jobTitle}"`,
+      metadata: { companyId, demandId, changedFields: Object.keys(changes) },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
+
     return NextResponse.json({
       success: true,
       message: 'Edit request submitted for approval',
       request: created,
     })
   } catch (error) {
+    await logActivity({
+      userType: 'company',
+      entityType: 'demand',
+      action: 'update',
+      description: 'Failed to submit demand edit request',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return apiError(error, 500)
   }
 }
@@ -83,6 +110,8 @@ export async function DELETE(
   request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const { id: demandId } = await ctx.params
     const body = await request.json()
@@ -127,12 +156,36 @@ export async function DELETE(
       }).catch(() => {})
     }
 
+    await logActivity({
+      userId: requestedByUserId,
+      userName: requestedByEmployeeName,
+      userType: 'company',
+      entityType: 'demand',
+      entityId: demandId,
+      action: 'delete',
+      description: `Submitted delete request for demand "${demand.jobTitle}"`,
+      metadata: { companyId, demandId },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
+
     return NextResponse.json({
       success: true,
       message: 'Delete request submitted for approval',
       request: created,
     })
   } catch (error) {
+    await logActivity({
+      userType: 'company',
+      entityType: 'demand',
+      action: 'delete',
+      description: 'Failed to submit demand delete request',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return apiError(error, 500)
   }
 }

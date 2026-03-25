@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function GET() {
   try {
@@ -21,6 +22,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { action, requestId, adminUserId, note } = body as {
@@ -44,13 +47,11 @@ export async function POST(request: NextRequest) {
       const changes: any = req.changes || {}
       const demand = await db.demands.getById(req.demandId)
 
-      // If this is a delete request and demand is already gone, just mark as approved
       if (changes.markForDelete) {
         if (demand) {
           await db.demands.delete(req.demandId)
         }
       } else {
-        // For normal edits, if demand is missing we cannot apply changes
         if (!demand) {
           await db.demandEditRequests.update(requestId, {
             status: 'rejected',
@@ -79,6 +80,20 @@ export async function POST(request: NextRequest) {
           : `Your edit request for "${jobTitle}" was approved and applied.`,
         link: '/company/demands',
       }).catch(() => {})
+      await logActivity({
+        userId: adminUserId || 'system',
+        userName: 'Admin',
+        userEmail: '',
+        userType: 'superadmin',
+        entityType: 'demand',
+        entityId: req.demandId,
+        action: changes.markForDelete ? 'approve_delete' : 'approve_edit',
+        description: `Approved demand ${changes.markForDelete ? 'deletion' : 'edit'} request for: ${jobTitle}`,
+        metadata: { requestId, demandId: req.demandId, companyId: req.companyId, jobTitle, isDelete: !!changes.markForDelete },
+        status: 'success',
+        ip,
+        userAgent: ua,
+      })
       return NextResponse.json({ success: true, message: changes.markForDelete ? 'Demand deleted' : 'Demand changes approved and applied' })
     }
 
@@ -98,9 +113,35 @@ export async function POST(request: NextRequest) {
       message: `Your edit/delete request for "${jobTitleReject}" was rejected.`,
       link: '/company/demands',
     }).catch(() => {})
+    await logActivity({
+      userId: adminUserId || 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'demand',
+      entityId: req.demandId,
+      action: 'reject_edit',
+      description: `Rejected demand edit request for: ${jobTitleReject}`,
+      metadata: { requestId, demandId: req.demandId, companyId: req.companyId, jobTitle: jobTitleReject, note },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
     return NextResponse.json({ success: true, message: 'Demand change request rejected' })
   } catch (error) {
+    await logActivity({
+      userId: 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'demand',
+      entityId: '',
+      action: 'demand_approval_action',
+      description: `Failed to process demand approval: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return apiError(error, 500)
   }
 }
-

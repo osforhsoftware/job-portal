@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,6 +24,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { agentId, name, phone, password, photoUrl, idProofUrl } = body
@@ -47,9 +50,35 @@ export async function PATCH(request: NextRequest) {
     }
 
     const { password: _, ...agentData } = updated
+
+    const updatedFields = Object.keys(updates).filter(k => k !== 'password')
+    await logActivity({
+      userId: agentId,
+      userName: updated.name,
+      userType: 'agent',
+      entityType: 'agent',
+      entityId: agentId,
+      action: 'update',
+      description: `Agent updated profile (${updatedFields.join(', ')})`,
+      metadata: { agentId, updatedFields },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
+
     return NextResponse.json({ success: true, agent: agentData })
   } catch (error) {
     console.error('Failed to update agent profile:', error)
+    await logActivity({
+      userType: 'agent',
+      entityType: 'agent',
+      action: 'update',
+      description: 'Failed to update agent profile',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
   }
 }

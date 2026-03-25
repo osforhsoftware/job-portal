@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
 import type { Candidate } from '@/lib/db'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export const runtime = 'nodejs'
 
@@ -97,6 +98,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     await initializeDatabase()
     const candidateId = request.nextUrl.searchParams.get('candidateId')
@@ -145,12 +148,37 @@ export async function PATCH(request: NextRequest) {
     const updated = await db.candidates.getById(candidateId)
     const profileCompletionPercent = updated ? profileCompletion(updated) : 0
 
+    await logActivity({
+      userId: candidateId,
+      userName: `${candidate.firstName} ${candidate.lastName}`.trim(),
+      userEmail: candidate.email,
+      userType: 'candidate',
+      entityType: 'candidate',
+      entityId: candidateId,
+      action: 'update',
+      description: `Candidate updated profile (${Object.keys(updates).length} fields)`,
+      metadata: { updatedFields: Object.keys(updates) },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
+
     return NextResponse.json({
       success: true,
       profileCompletion: profileCompletionPercent,
     })
   } catch (error) {
     console.error('PATCH /api/candidate/profile', error)
+    await logActivity({
+      userType: 'candidate',
+      entityType: 'candidate',
+      action: 'update',
+      description: 'Failed to update candidate profile',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
   }
 }

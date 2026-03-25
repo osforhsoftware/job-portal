@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
 import { authenticate } from '@/lib/auth'
 import { apiError } from '@/lib/api-utils'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function POST(request: NextRequest) {
   try {
     await initializeDatabase()
+    const ip = getClientIp(request)
+    const ua = getUserAgent(request)
     const { email, password, loginType } = await request.json() as {
       email?: string
       password?: string
@@ -22,6 +25,16 @@ export async function POST(request: NextRequest) {
     const user = await authenticate(email, password)
 
     if (!user) {
+      await logActivity({
+        userType: 'system',
+        entityType: 'login',
+        action: 'login_failed',
+        description: `Failed login attempt for email: ${email}`,
+        metadata: { email },
+        status: 'failed',
+        ip,
+        userAgent: ua,
+      })
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
@@ -33,18 +46,60 @@ export async function POST(request: NextRequest) {
       if (agency) {
         const approvalStatus = (agency as any).approvalStatus || 'pending'
         if (approvalStatus === 'rejected') {
+          await logActivity({
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            userType: 'agency',
+            entityType: 'login',
+            entityId: user.id,
+            action: 'login_failed',
+            description: `Login blocked for ${user.name}: agency registration rejected`,
+            metadata: { email, role: user.role, reason: 'agency_rejected' },
+            status: 'failed',
+            ip,
+            userAgent: ua,
+          })
           return NextResponse.json(
             { error: 'Your agency registration has been rejected. Please contact support.' },
             { status: 403 }
           )
         }
         if (!agency.isActive) {
+          await logActivity({
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            userType: 'agency',
+            entityType: 'login',
+            entityId: user.id,
+            action: 'login_failed',
+            description: `Login blocked for ${user.name}: agency account inactive`,
+            metadata: { email, role: user.role, reason: 'agency_inactive' },
+            status: 'failed',
+            ip,
+            userAgent: ua,
+          })
           return NextResponse.json(
             { error: 'Your agency account is inactive. Please contact support.' },
             { status: 403 }
           )
         }
         if (approvalStatus !== 'approved') {
+          await logActivity({
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            userType: 'agency',
+            entityType: 'login',
+            entityId: user.id,
+            action: 'login_failed',
+            description: `Login blocked for ${user.name}: agency pending approval`,
+            metadata: { email, role: user.role, reason: 'agency_pending' },
+            status: 'failed',
+            ip,
+            userAgent: ua,
+          })
           return NextResponse.json(
             { error: 'Your agency is pending admin approval. Please wait for the super admin to approve your account.' },
             { status: 403 }
@@ -58,18 +113,60 @@ export async function POST(request: NextRequest) {
       if (agency) {
         const approvalStatus = (agency as any).approvalStatus || 'pending'
         if (approvalStatus === 'rejected') {
+          await logActivity({
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            userType: 'agent',
+            entityType: 'login',
+            entityId: user.id,
+            action: 'login_failed',
+            description: `Login blocked for agent ${user.name}: agency rejected`,
+            metadata: { email, role: user.role, reason: 'agency_rejected' },
+            status: 'failed',
+            ip,
+            userAgent: ua,
+          })
           return NextResponse.json(
             { error: 'Your agency has been rejected. You cannot sign in. Please contact your agency or support.' },
             { status: 403 }
           )
         }
         if (!agency.isActive) {
+          await logActivity({
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            userType: 'agent',
+            entityType: 'login',
+            entityId: user.id,
+            action: 'login_failed',
+            description: `Login blocked for agent ${user.name}: agency inactive`,
+            metadata: { email, role: user.role, reason: 'agency_inactive' },
+            status: 'failed',
+            ip,
+            userAgent: ua,
+          })
           return NextResponse.json(
             { error: 'Your agency account is inactive. You cannot sign in. Please contact your agency or support.' },
             { status: 403 }
           )
         }
         if (approvalStatus !== 'approved') {
+          await logActivity({
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            userType: 'agent',
+            entityType: 'login',
+            entityId: user.id,
+            action: 'login_failed',
+            description: `Login blocked for agent ${user.name}: agency pending approval`,
+            metadata: { email, role: user.role, reason: 'agency_pending' },
+            status: 'failed',
+            ip,
+            userAgent: ua,
+          })
           return NextResponse.json(
             { error: 'Your agency is pending approval. You cannot sign in until the agency is approved.' },
             { status: 403 }
@@ -83,6 +180,20 @@ export async function POST(request: NextRequest) {
       const company = await db.companies.getById(companyId)
       if (company) {
         if (!company.subscriptionStatus || company.subscriptionStatus !== 'active') {
+          await logActivity({
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            userType: 'company',
+            entityType: 'login',
+            entityId: user.id,
+            action: 'login_failed',
+            description: `Login blocked for ${user.name}: company subscription not active`,
+            metadata: { email, role: user.role, reason: 'subscription_inactive' },
+            status: 'failed',
+            ip,
+            userAgent: ua,
+          })
           return NextResponse.json(
             {
               error: 'Your account is currently under review by the administrator. Please wait until your company details are verified and approved.',
@@ -91,6 +202,20 @@ export async function POST(request: NextRequest) {
           )
         }
         if (!company.isActive) {
+          await logActivity({
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            userType: 'company',
+            entityType: 'login',
+            entityId: user.id,
+            action: 'login_failed',
+            description: `Login blocked for ${user.name}: company inactive`,
+            metadata: { email, role: user.role, reason: 'company_inactive' },
+            status: 'failed',
+            ip,
+            userAgent: ua,
+          })
           return NextResponse.json(
             {
               error:
@@ -111,6 +236,22 @@ export async function POST(request: NextRequest) {
         user.isActive = true
       }
     }
+
+    const userType = user.role === 'super_admin' ? 'superadmin' : user.role
+    await logActivity({
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      userType: userType as any,
+      entityType: 'login',
+      entityId: user.id,
+      action: 'login',
+      description: `${user.name} logged in as ${user.role}`,
+      metadata: { role: user.role, email },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
 
     const { password: _, ...userWithoutPassword } = user
 

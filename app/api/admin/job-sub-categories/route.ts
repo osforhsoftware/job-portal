@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, JobSubCategory } from '@/lib/db'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 function slugify(text: string): string {
   return text
@@ -31,6 +32,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { categoryId, name, slug: slugInput, sortOrder, isActive } = body
@@ -69,9 +72,36 @@ export async function POST(request: NextRequest) {
       isActive: isActive !== false,
     }
     const created = await db.jobSubCategories.create(newSub)
+    await logActivity({
+      userId: 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'job_category',
+      entityId: created.id,
+      action: 'create',
+      description: `Created job sub-category: ${name.trim()}`,
+      metadata: { subCategoryName: name.trim(), slug, categoryId },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
     return NextResponse.json({ success: true, subCategory: created })
   } catch (error) {
     console.error('Job sub-category create error:', error)
+    await logActivity({
+      userId: 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'job_category',
+      entityId: '',
+      action: 'create',
+      description: `Failed to create job sub-category: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to create job sub-category' },
       { status: 500 }
@@ -80,6 +110,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { id, slug, name, sortOrder, isActive } = body
@@ -97,9 +129,36 @@ export async function PATCH(request: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: 'Sub-category not found' }, { status: 404 })
     }
+    await logActivity({
+      userId: 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'job_category',
+      entityId: subCategoryId,
+      action: 'update',
+      description: `Updated job sub-category: ${updated.name}`,
+      metadata: { subCategoryName: updated.name, changes: updates },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
     return NextResponse.json({ success: true, subCategory: updated })
   } catch (error) {
     console.error('Job sub-category update error:', error)
+    await logActivity({
+      userId: 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'job_category',
+      entityId: '',
+      action: 'update',
+      description: `Failed to update job sub-category: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to update job sub-category' },
       { status: 500 }
@@ -108,6 +167,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
@@ -119,9 +180,36 @@ export async function DELETE(request: NextRequest) {
     if (!deleted) {
       return NextResponse.json({ error: 'Sub-category not found' }, { status: 404 })
     }
+    await logActivity({
+      userId: 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'job_category',
+      entityId: subCategoryId,
+      action: 'delete',
+      description: `Deleted job sub-category: ${subCategoryId}`,
+      metadata: { subCategoryId },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Job sub-category delete error:', error)
+    await logActivity({
+      userId: 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'job_category',
+      entityId: '',
+      action: 'delete',
+      description: `Failed to delete job sub-category: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to delete job sub-category' },
       { status: 500 }

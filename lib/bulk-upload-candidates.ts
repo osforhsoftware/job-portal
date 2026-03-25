@@ -1,6 +1,6 @@
 import type { Candidate } from '@/lib/db'
 import { getDatabase } from '@/lib/mongodb'
-import { uploadToCloudinary, getResourceType, CLOUDINARY_FOLDERS } from '@/lib/cloudinary'
+import { saveBuffer } from '@/lib/file-storage'
 import * as XLSX from 'xlsx'
 
 import { db } from './db'
@@ -658,10 +658,13 @@ export async function importBulkUploadCandidates(args: {
       const cvFile = cvMap.get(row.cvFileName)
       if (!cvFile) throw new Error(`CV file not found for '${row.cvFileName}'`)
 
-      const cvUrl = await uploadToCloudinary(cvFile.buffer, cvFile.type, {
-        folder: CLOUDINARY_FOLDERS.CANDIDATE_CV,
-        resource_type: getResourceType(cvFile.type),
-      })
+      const { url: cvUrl } = await saveBuffer(
+        cvFile.buffer,
+        cvFile.type,
+        cvFile.fileName,
+        'cv',
+        { userId: agencyId }
+      )
 
       const mappedStatus = statusToCandidateStatus(row.currentStatus)
 

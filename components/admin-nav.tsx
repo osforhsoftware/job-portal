@@ -19,6 +19,7 @@ import {
   Shield,
   Tags,
   FileSpreadsheet,
+  Activity,
 } from "lucide-react"
 
 const navItems = [
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/admin/interviews", label: "Interviews", icon: Video },
   { href: "/admin/plans", label: "Plans", icon: CreditCard },
   { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/activity-logs", label: "Activity Logs", icon: Activity },
 ]
 
 const superAdminOnlyNavItems = [

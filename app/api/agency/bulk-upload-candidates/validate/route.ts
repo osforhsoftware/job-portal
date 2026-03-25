@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
 import { validateBulkUploadCandidates } from '@/lib/bulk-upload-candidates'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
+
   try {
     await initializeDatabase()
     const formData = await request.formData()
@@ -55,7 +59,6 @@ export async function POST(request: NextRequest) {
       uploadedBy: (formData.get('uploadedBy') as string | null)?.trim() || undefined,
     })
 
-    // Agency-specific max batch check (if configured)
     const maxPerBatch = typeof agency.bulkUploadMaxCandidatesPerBatch === 'number' ? agency.bulkUploadMaxCandidatesPerBatch : -1
     if (maxPerBatch !== -1 && maxPerBatch >= 0 && validation.totalCandidatesInSheet > maxPerBatch) {
       return NextResponse.json({
@@ -73,8 +76,21 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Keep response lightweight (validRows is intentionally omitted)
     const { validRows, ...rest } = validation
+
+    await logActivity({
+      userId: agencyId,
+      userName: agency.name,
+      userType: 'agency',
+      entityType: 'bulk',
+      entityId: agencyId,
+      action: 'read',
+      description: `Bulk upload validation: ${rest.candidatesToUpload} candidates valid, ${rest.errors.length} errors`,
+      metadata: { spreadsheetFileName, cvFileCount: cvFiles.length, candidatesToUpload: rest.candidatesToUpload, totalCandidatesInSheet: rest.totalCandidatesInSheet, errorCount: rest.errors.length },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
 
     return NextResponse.json({
       success: true,
@@ -82,7 +98,17 @@ export async function POST(request: NextRequest) {
       canImport: rest.errors.length === 0,
     })
   } catch (error) {
+    await logActivity({
+      userId: 'unknown',
+      userType: 'agency',
+      entityType: 'bulk',
+      action: 'read',
+      description: 'Failed to validate bulk upload candidates',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    })
     return apiError(error, 400)
   }
 }
-

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, JobCategory } from '@/lib/db'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 function slugify(text: string): string {
   return text
@@ -24,6 +25,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { name, emoji, description, slug: slugInput, sortOrder, isActive, group } = body
@@ -61,9 +64,11 @@ export async function POST(request: NextRequest) {
       ...(group && validGroups.includes(group) ? { group } : {}),
     }
     const created = await db.jobCategories.create(newCat)
+    await logActivity({ userType: 'superadmin', entityType: 'job_category', entityId: created.id, action: 'create_job_category', description: `Created job category ${name.trim()}`, metadata: { name: name.trim(), slug, group }, status: 'success', ip, userAgent: ua })
     return NextResponse.json({ success: true, category: created })
   } catch (error) {
     console.error('Job category create error:', error)
+    await logActivity({ userType: 'superadmin', entityType: 'job_category', action: 'create_job_category', description: 'Job category creation failed', metadata: { error: String(error) }, status: 'failed', ip, userAgent: ua })
     return NextResponse.json(
       { error: 'Failed to create job category' },
       { status: 500 }
@@ -72,6 +77,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { id, slug, name, emoji, description, sortOrder, isActive, group } = body
@@ -95,9 +102,11 @@ export async function PATCH(request: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 })
     }
+    await logActivity({ userType: 'superadmin', entityType: 'job_category', entityId: categoryId, action: 'update_job_category', description: `Updated job category ${updated.name}`, metadata: { categoryId, updates }, status: 'success', ip, userAgent: ua })
     return NextResponse.json({ success: true, category: updated })
   } catch (error) {
     console.error('Job category update error:', error)
+    await logActivity({ userType: 'superadmin', entityType: 'job_category', action: 'update_job_category', description: 'Job category update failed', metadata: { error: String(error) }, status: 'failed', ip, userAgent: ua })
     return NextResponse.json(
       { error: 'Failed to update job category' },
       { status: 500 }
@@ -106,6 +115,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
@@ -117,9 +128,11 @@ export async function DELETE(request: NextRequest) {
     if (!deleted) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 })
     }
+    await logActivity({ userType: 'superadmin', entityType: 'job_category', entityId: categoryId, action: 'delete_job_category', description: `Deleted job category ${categoryId}`, metadata: { categoryId }, status: 'success', ip, userAgent: ua })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Job category delete error:', error)
+    await logActivity({ userType: 'superadmin', entityType: 'job_category', action: 'delete_job_category', description: 'Job category deletion failed', metadata: { error: String(error) }, status: 'failed', ip, userAgent: ua })
     return NextResponse.json(
       { error: 'Failed to delete job category' },
       { status: 500 }

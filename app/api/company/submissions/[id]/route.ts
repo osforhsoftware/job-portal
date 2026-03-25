@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 const POINTS_PER_HIRE = 10
 const DEFAULT_COMMISSION_AMOUNT = 100
@@ -8,6 +9,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const { id } = await params
     const body = await request.json()
@@ -108,9 +111,32 @@ export async function PATCH(
     }
 
     const updated = await db.applications.getById(id)
+
+    await logActivity({
+      userType: 'company',
+      entityType: 'submission',
+      entityId: id,
+      action: 'update',
+      description: `Updated submission status to "${newStatus}" for ${app.candidateName} – ${app.demandTitle}`,
+      metadata: { companyId, candidateId: app.candidateId, demandId: app.demandId, previousStatus: app.status, newStatus },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
+
     return NextResponse.json({ success: true, submission: updated })
   } catch (error) {
     console.error('Update submission failed:', error)
+    await logActivity({
+      userType: 'company',
+      entityType: 'submission',
+      action: 'update',
+      description: 'Failed to update submission status',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return NextResponse.json({ error: 'Failed to update submission' }, { status: 500 })
   }
 }

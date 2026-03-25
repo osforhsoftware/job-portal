@@ -390,7 +390,7 @@ export interface CandidateSource {
   candidateId: string
   agentId?: string
   agencyId: string
-  sourceType: 'referral' | 'bulk_upload' | 'manual' | 'link'
+  sourceType: 'referral' | 'bulk_upload' | 'manual' | 'link' | 'default_registration'
   createdAt: string
 }
 
@@ -457,6 +457,37 @@ export interface Notification {
   read: boolean
   createdAt: string
   metadata?: Record<string, unknown>
+}
+
+export type ActivityLogUserType = 'superadmin' | 'admin' | 'agency' | 'agent' | 'company' | 'candidate' | 'system'
+export type ActivityLogEntityType = 'agency' | 'agent' | 'company' | 'candidate' | 'demand' | 'submission' | 'file' | 'login' | 'bulk' | 'subscription' | 'plan' | 'settings' | 'bid' | 'interview' | 'payment' | 'notification' | 'job_category' | 'system'
+export type ActivityLogStatus = 'success' | 'failed' | 'pending'
+
+export interface ActivityLog {
+  id: string
+  userId?: string
+  userName?: string
+  userEmail?: string
+  userType: ActivityLogUserType
+  entityType: ActivityLogEntityType
+  entityId?: string
+  action: string
+  description: string
+  metadata?: Record<string, unknown>
+  status: ActivityLogStatus
+  ipAddress?: string
+  userAgent?: string
+  createdAt: string
+}
+
+export interface ActivityLogFilter {
+  userType?: ActivityLogUserType
+  entityType?: ActivityLogEntityType
+  action?: string
+  status?: ActivityLogStatus
+  startDate?: string
+  endDate?: string
+  search?: string
 }
 
 export type CreateCandidateInput = Omit<Candidate, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & {
@@ -1284,6 +1315,113 @@ export const db = {
       return result.modifiedCount ?? 0
     },
   },
+
+  activityLogs: {
+    create: async (log: Omit<ActivityLog, 'id' | 'createdAt'>): Promise<ActivityLog> => {
+      const db = await getDatabase()
+      const now = new Date().toISOString()
+      const doc = { ...log, createdAt: now }
+      const result = await db.collection('activity_logs').insertOne(doc)
+      return toInterface<ActivityLog>({ ...doc, _id: result.insertedId })
+    },
+
+    getAll: async (
+      filter: ActivityLogFilter = {},
+      page = 1,
+      limit = 50
+    ): Promise<{ logs: ActivityLog[]; total: number }> => {
+      const db = await getDatabase()
+      const query: Record<string, unknown> = {}
+
+      if (filter.userType) query.userType = filter.userType
+      if (filter.entityType) query.entityType = filter.entityType
+      if (filter.action) query.action = filter.action
+      if (filter.status) query.status = filter.status
+
+      if (filter.startDate || filter.endDate) {
+        query.createdAt = {}
+        if (filter.startDate) (query.createdAt as Record<string, string>).$gte = filter.startDate
+        if (filter.endDate) (query.createdAt as Record<string, string>).$lte = filter.endDate
+      }
+
+      if (filter.search) {
+        query.$or = [
+          { description: { $regex: filter.search, $options: 'i' } },
+          { userName: { $regex: filter.search, $options: 'i' } },
+          { userEmail: { $regex: filter.search, $options: 'i' } },
+          { action: { $regex: filter.search, $options: 'i' } },
+        ]
+      }
+
+      const total = await db.collection('activity_logs').countDocuments(query)
+      const skip = (page - 1) * limit
+      const list = await db
+        .collection('activity_logs')
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray()
+
+      return { logs: list.map((doc) => toInterface<ActivityLog>(doc)), total }
+    },
+
+    getById: async (id: string): Promise<ActivityLog | undefined> => {
+      const db = await getDatabase()
+      const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { id }
+      const doc = await db.collection('activity_logs').findOne(query)
+      return doc ? toInterface<ActivityLog>(doc) : undefined
+    },
+
+    getStats: async (): Promise<{
+      total: number
+      byStatus: Record<string, number>
+      byUserType: Record<string, number>
+      byAction: Record<string, number>
+      todayCount: number
+    }> => {
+      const db = await getDatabase()
+      const total = await db.collection('activity_logs').countDocuments()
+
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayCount = await db.collection('activity_logs').countDocuments({
+        createdAt: { $gte: todayStart.toISOString() },
+      })
+
+      const statusAgg = await db
+        .collection('activity_logs')
+        .aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }])
+        .toArray()
+      const byStatus: Record<string, number> = {}
+      statusAgg.forEach((s) => { byStatus[s._id] = s.count })
+
+      const userTypeAgg = await db
+        .collection('activity_logs')
+        .aggregate([{ $group: { _id: '$userType', count: { $sum: 1 } } }])
+        .toArray()
+      const byUserType: Record<string, number> = {}
+      userTypeAgg.forEach((s) => { byUserType[s._id] = s.count })
+
+      const actionAgg = await db
+        .collection('activity_logs')
+        .aggregate([
+          { $group: { _id: '$action', count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: 20 },
+        ])
+        .toArray()
+      const byAction: Record<string, number> = {}
+      actionAgg.forEach((s) => { byAction[s._id] = s.count })
+
+      return { total, byStatus, byUserType, byAction, todayCount }
+    },
+
+    getDistinctActions: async (): Promise<string[]> => {
+      const db = await getDatabase()
+      return db.collection('activity_logs').distinct('action')
+    },
+  },
 }
 
 // Initialize default plans and super admin
@@ -1333,6 +1471,13 @@ export async function initializeDatabase() {
     await database.collection('candidateFiles').createIndex({ fileName: 1 })
     await database.collection('notifications').createIndex({ recipientType: 1, recipientId: 1 })
     await database.collection('notifications').createIndex({ createdAt: -1 })
+
+    await database.collection('activity_logs').createIndex({ createdAt: -1 })
+    await database.collection('activity_logs').createIndex({ userType: 1 })
+    await database.collection('activity_logs').createIndex({ entityType: 1 })
+    await database.collection('activity_logs').createIndex({ action: 1 })
+    await database.collection('activity_logs').createIndex({ status: 1 })
+    await database.collection('activity_logs').createIndex({ userId: 1 })
   } catch (e) {
     // If indexes already exist or duplicates are present, don't block app startup
     console.warn('Index initialization warning:', e)

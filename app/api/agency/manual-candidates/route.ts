@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
-import { uploadToCloudinary, getResourceType, CLOUDINARY_FOLDERS } from '@/lib/cloudinary'
+import { saveFile } from '@/lib/file-storage'
 import { apiError } from '@/lib/api-utils'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export const runtime = 'nodejs'
 
@@ -12,16 +13,10 @@ const ALLOWED_CV_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
 
-async function saveCvToCloudinary(file: File): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const resourceType = getResourceType(file.type)
-  return uploadToCloudinary(buffer, file.type, {
-    folder: CLOUDINARY_FOLDERS.CANDIDATE_CV,
-    resource_type: resourceType,
-  })
-}
-
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
+
   try {
     await initializeDatabase()
     const formData = await request.formData()
@@ -77,7 +72,6 @@ export async function POST(request: NextRequest) {
     try {
       jobCategories = jobCategoriesStr ? JSON.parse(jobCategoriesStr) : []
     } catch {
-      // Fallback: accept single value
       if (jobCategoriesStr) jobCategories = [jobCategoriesStr]
     }
 
@@ -106,7 +100,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Ensure email is unique across entities
     const existing =
       (await db.candidates.getByEmail(email)) ||
       (await db.agencies.getByEmail(email)) ||
@@ -128,7 +121,7 @@ export async function POST(request: NextRequest) {
       ? skillsRaw.split(',').map((s) => s.trim()).filter(Boolean)
       : []
 
-    const cvUrl = await saveCvToCloudinary(cvFile)
+    const { url: cvUrl } = await saveFile(cvFile, 'manual-cv')
 
     const candidate = await db.candidates.create({
       role: 'candidate',
@@ -183,12 +176,35 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    await logActivity({
+      userId: agencyId,
+      userType: 'agency',
+      entityType: 'candidate',
+      entityId: candidate.id,
+      action: 'create',
+      description: `Manual candidate created: ${firstName} ${lastName} (${email})`,
+      metadata: { candidateId: candidate.id, candidateName: `${firstName} ${lastName}`, candidateEmail: email, agentId: agent.id },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
+
     return NextResponse.json({
       success: true,
       candidateId: candidate.id,
     })
   } catch (error) {
+    await logActivity({
+      userId: 'unknown',
+      userType: 'agency',
+      entityType: 'candidate',
+      action: 'create',
+      description: 'Failed to create manual candidate',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    })
     return apiError(error, 500)
   }
 }
-

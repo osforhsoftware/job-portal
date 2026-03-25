@@ -188,7 +188,7 @@ recruitment-bidding-platform/
 1. Replace file-based DB with PostgreSQL/MongoDB for production
 2. Implement proper password hashing (bcrypt)
 3. Add JWT authentication tokens
-4. Implement file storage (AWS S3, Cloudinary, etc.)
+4. File storage is local under `public/uploads/` (`lib/file-storage.ts`); swap to S3-compatible storage for production if needed.
 5. Add email service integration
 6. Implement real payment gateway (Stripe/PayPal)
 7. Add comprehensive error handling

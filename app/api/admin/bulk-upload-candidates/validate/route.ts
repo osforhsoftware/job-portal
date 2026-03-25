@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, initializeDatabase } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
 import { validateBulkUploadCandidates } from '@/lib/bulk-upload-candidates'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     await initializeDatabase()
     const formData = await request.formData()
@@ -75,6 +78,20 @@ export async function POST(request: NextRequest) {
     }
 
     const { validRows, ...rest } = validation
+    await logActivity({
+      userId: 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'bulk',
+      entityId: agencyId,
+      action: 'validate',
+      description: `Validated bulk upload for agency: ${agency.name} (${rest.totalCandidatesInSheet} candidates, ${rest.errors.length} errors)`,
+      metadata: { agencyId, agencyName: agency.name, totalCandidates: rest.totalCandidatesInSheet, errorCount: rest.errors.length },
+      status: 'success',
+      ip,
+      userAgent: ua,
+    })
     return NextResponse.json({
       success: true,
       ...rest,
@@ -82,7 +99,19 @@ export async function POST(request: NextRequest) {
       totalCvFilesInBatch: rest.totalCvFilesInBatch,
     })
   } catch (error) {
+    await logActivity({
+      userId: 'system',
+      userName: 'Admin',
+      userEmail: '',
+      userType: 'superadmin',
+      entityType: 'bulk',
+      entityId: '',
+      action: 'validate',
+      description: `Failed bulk upload validation: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      status: 'failed',
+      ip,
+      userAgent: ua,
+    }).catch(() => {})
     return apiError(error, 400)
   }
 }
-

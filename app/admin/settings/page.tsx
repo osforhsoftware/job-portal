@@ -11,13 +11,29 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { MessageBanner } from "@/components/ui/message-banner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Settings, ArrowLeft, Loader2, Save } from "lucide-react"
+
+type AgencyRow = {
+  id: string
+  name: string
+  approvalStatus?: string
+  isActive?: boolean
+}
 
 export default function AdminSettingsPage() {
   const router = useRouter()
   const [userRole, setUserRole] = useState<string | null>(null)
   const [videoRequired, setVideoRequired] = useState(false)
   const [commissionRatePercent, setCommissionRatePercent] = useState("15")
+  const [defaultAgencyId, setDefaultAgencyId] = useState<string>("")
+  const [agencies, setAgencies] = useState<AgencyRow[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -39,12 +55,22 @@ export default function AdminSettingsPage() {
 
   const loadSettings = async () => {
     try {
-      const res = await fetch("/api/admin/settings")
-      if (res.ok) {
-        const data = await res.json()
+      const [settingsRes, agenciesRes] = await Promise.all([
+        fetch("/api/admin/settings"),
+        fetch("/api/admin/agencies"),
+      ])
+      if (settingsRes.ok) {
+        const data = await settingsRes.json()
         setVideoRequired(data.settings.videoRequired ?? false)
         const rate = (data.settings.commissionRate ?? 0.15) * 100
         setCommissionRatePercent(String(Math.round(rate)))
+        setDefaultAgencyId(
+          typeof data.settings.defaultAgencyId === "string" ? data.settings.defaultAgencyId : ""
+        )
+      }
+      if (agenciesRes.ok) {
+        const data = await agenciesRes.json()
+        setAgencies(data.agencies ?? [])
       }
     } catch (e) {
       console.error(e)
@@ -70,6 +96,7 @@ export default function AdminSettingsPage() {
         body: JSON.stringify({
           videoRequired,
           commissionRate: rate / 100,
+          defaultAgencyId: defaultAgencyId.trim() === "" ? null : defaultAgencyId,
         }),
       })
       const data = await res.json()
@@ -80,6 +107,9 @@ export default function AdminSettingsPage() {
       }
       setVideoRequired(data.settings.videoRequired)
       setCommissionRatePercent(String(Math.round(data.settings.commissionRate * 100)))
+      setDefaultAgencyId(
+        typeof data.settings.defaultAgencyId === "string" ? data.settings.defaultAgencyId : ""
+      )
       setMessage({ type: "success", text: "Settings saved successfully" })
     } catch (e) {
       console.error(e)
@@ -90,6 +120,16 @@ export default function AdminSettingsPage() {
   }
 
   if (userRole === null) return null
+
+  const eligibleAgencies = agencies.filter(
+    (a) => a.approvalStatus === "approved" && a.isActive !== false
+  )
+  const defaultAgencyInvalid =
+    defaultAgencyId !== "" &&
+    !eligibleAgencies.some((a) => a.id === defaultAgencyId)
+  const orphanAgency = defaultAgencyInvalid
+    ? agencies.find((a) => a.id === defaultAgencyId)
+    : undefined
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -119,12 +159,58 @@ export default function AdminSettingsPage() {
                   <Settings className="h-5 w-5" />
                   Settings
                 </CardTitle>
-                <CardDescription>Video profile requirement, commission rate, and other options.</CardDescription>
+                <CardDescription>
+                  Video profile requirement, commission rate, default agency for self-registration, and other options.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-8">
                 {message && (
                   <MessageBanner message={message} onDismiss={() => setMessage(null)} />
                 )}
+
+                {defaultAgencyInvalid && (
+                  <p className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+                    The saved default agency is no longer eligible (inactive or not approved). Choose another agency or clear this setting.
+                    {orphanAgency ? ` (${orphanAgency.name})` : ""}
+                  </p>
+                )}
+
+                <div className="flex flex-col gap-3 rounded-lg border border-border/50 p-4">
+                  <div>
+                    <Label htmlFor="defaultAgency" className="font-medium text-foreground">
+                      Default agency for candidate self-registration
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Self-registered candidates with no referral link are assigned to this agency so they appear under that agency&apos;s candidates. Leave unset so only Super Admin sees them until reassigned.
+                    </p>
+                  </div>
+                  <Select
+                    value={defaultAgencyId === "" ? "__none__" : defaultAgencyId}
+                    onValueChange={(v) => setDefaultAgencyId(v === "__none__" ? "" : v)}
+                  >
+                    <SelectTrigger id="defaultAgency" className="w-full max-w-md">
+                      <SelectValue placeholder="No default agency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None (unassigned)</SelectItem>
+                      {defaultAgencyInvalid && defaultAgencyId && orphanAgency && (
+                        <SelectItem value={defaultAgencyId}>
+                          {orphanAgency.name} (not eligible — update required)
+                        </SelectItem>
+                      )}
+                      {defaultAgencyInvalid && defaultAgencyId && !orphanAgency && (
+                        <SelectItem value={defaultAgencyId}>
+                          Unknown agency (clear or replace)
+                        </SelectItem>
+                      )}
+                      {eligibleAgencies.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-border/50 p-4">
                   <div>

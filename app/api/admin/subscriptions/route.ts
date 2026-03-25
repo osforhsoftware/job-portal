@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function GET() {
   try {
@@ -61,6 +62,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
+  const ip = getClientIp(request)
+  const ua = getUserAgent(request)
   try {
     const body = await request.json()
     const { entityType, entityId, subscriptionPlan, subscriptionStatus, subscriptionExpiresAt } = body
@@ -108,6 +111,7 @@ export async function PATCH(request: NextRequest) {
       const updated = await db.agencies.getById(entityId)
       if (!updated) return NextResponse.json({ success: true, entity: null })
       const { password, ...safe } = (updated as any) || {}
+      await logActivity({ userType: 'superadmin', entityType: 'subscription', entityId, action: 'update_subscription', description: `Updated subscription for agency ${agency.name}`, metadata: { agencyName: agency.name, subscriptionPlan, subscriptionStatus, subscriptionExpiresAt }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, entity: safe, entityType: 'agency' })
     }
 
@@ -151,6 +155,7 @@ export async function PATCH(request: NextRequest) {
       const updated = await db.companies.getById(entityId)
       if (!updated) return NextResponse.json({ success: true, entity: null })
       const { password, ...safe } = (updated as any) || {}
+      await logActivity({ userType: 'superadmin', entityType: 'subscription', entityId, action: 'update_subscription', description: `Updated subscription for company ${company.name}`, metadata: { companyName: company.name, subscriptionPlan, subscriptionStatus, subscriptionExpiresAt }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, entity: safe, entityType: 'company' })
     }
 
@@ -160,6 +165,7 @@ export async function PATCH(request: NextRequest) {
     )
   } catch (error) {
     console.error('Admin subscriptions PATCH error:', error)
+    await logActivity({ userType: 'superadmin', entityType: 'subscription', action: 'update_subscription', description: 'Subscription update failed', metadata: { error: String(error) }, status: 'failed', ip, userAgent: ua })
     return NextResponse.json(
       { error: 'Failed to update subscription' },
       { status: 500 }
