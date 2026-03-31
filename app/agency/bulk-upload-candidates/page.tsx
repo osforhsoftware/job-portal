@@ -264,9 +264,9 @@ export default function BulkUploadCandidatesAgencyPage() {
           {step === 1 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-primary" />
-                  Select Agency
+                <CardTitle className="flex items-center gap-2 text-balance">
+                  <Briefcase className="h-5 w-5 shrink-0 text-primary" />
+                  <span className="min-w-0 leading-tight">Select Agency</span>
                 </CardTitle>
                 <CardDescription>Agency is fixed for agency users.</CardDescription>
               </CardHeader>
@@ -276,8 +276,8 @@ export default function BulkUploadCandidatesAgencyPage() {
                   <p className="font-medium text-sm">{agencyName || agencyId}</p>
                 </div>
                 <div className="flex justify-end">
-                  <Button onClick={() => setStep(2)} disabled={!canGoStep2} className="gap-2">
-                    Next <ArrowRight className="h-4 w-4" />
+                  <Button onClick={() => setStep(2)} disabled={!canGoStep2} className="w-full gap-2 sm:w-auto">
+                    Next <ArrowRight className="h-4 w-4 shrink-0" />
                   </Button>
                 </div>
               </CardContent>
@@ -288,16 +288,16 @@ export default function BulkUploadCandidatesAgencyPage() {
           {step === 2 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CloudUpload className="h-5 w-5 text-primary" />
-                  Upload Files
+                <CardTitle className="flex items-center gap-2 text-balance">
+                  <CloudUpload className="h-5 w-5 shrink-0 text-primary" />
+                  <span className="min-w-0 leading-tight">Upload Files</span>
                 </CardTitle>
                 <CardDescription>Spreadsheet + CV files must match by exact filename.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <p className="text-sm font-medium">1) Upload Spreadsheet</p>
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -305,11 +305,22 @@ export default function BulkUploadCandidatesAgencyPage() {
                       className="hidden"
                       onChange={(e) => setSpreadsheet(e.target.files?.[0] ?? null)}
                     />
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-2">
-                      <FileText className="h-4 w-4" />
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="w-full shrink-0 gap-2 sm:w-auto"
+                    >
+                      <FileText className="h-4 w-4 shrink-0" />
                       Choose File
                     </Button>
-                    {spreadsheet ? <Badge variant="secondary">{spreadsheet.name}</Badge> : <span className="text-sm text-muted-foreground">No file selected</span>}
+                    {spreadsheet ? (
+                      <Badge variant="secondary" className="w-fit max-w-full truncate font-normal sm:max-w-[min(100%,28rem)]">
+                        {spreadsheet.name}
+                      </Badge>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">No file selected</span>
+                    )}
                   </div>
                   {spreadsheetError && <p className="text-sm text-destructive">{spreadsheetError}</p>}
                 </div>
@@ -381,20 +392,29 @@ export default function BulkUploadCandidatesAgencyPage() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <Button variant="outline" onClick={() => setStep(1)} disabled={uploading} className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
+                <div className="flex flex-col-reverse gap-3 border-t pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep(1)}
+                    disabled={uploading}
+                    className="w-full gap-2 sm:w-auto"
+                  >
+                    <ArrowLeft className="h-4 w-4 shrink-0" />
                     Back
                   </Button>
-                  <Button onClick={handleValidate} disabled={uploading} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+                  <Button
+                    onClick={handleValidate}
+                    disabled={uploading}
+                    className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 sm:w-auto"
+                  >
                     {uploading ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                         Validating…
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-4 w-4" />
+                        <Sparkles className="h-4 w-4 shrink-0" />
                         Review & Validate
                       </>
                     )}
@@ -408,9 +428,9 @@ export default function BulkUploadCandidatesAgencyPage() {
           {step === 3 && validation && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  Review & Confirm Upload
+                <CardTitle className="flex items-center gap-2 text-balance">
+                  <Sparkles className="h-5 w-5 shrink-0 text-primary" />
+                  <span className="min-w-0 leading-tight">Review & Confirm Upload</span>
                 </CardTitle>
                 <CardDescription>Validation must pass before import.</CardDescription>
               </CardHeader>
@@ -431,14 +451,14 @@ export default function BulkUploadCandidatesAgencyPage() {
                     </div>
                   </div>
                   {validation.errors.length === 0 ? (
-                    <div className="flex items-center gap-2 text-emerald-700">
-                      <CheckCircle2 className="h-4 w-4" />
-                      All validations passed.
+                    <div className="flex items-start gap-2 text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span className="min-w-0 leading-snug">All validations passed.</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-rose-700">
-                      <AlertTriangle className="h-4 w-4" />
-                      Validation failed for some rows.
+                    <div className="flex items-start gap-2 text-rose-700 dark:text-rose-400">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span className="min-w-0 leading-snug">Validation failed for some rows.</span>
                     </div>
                   )}
                 </div>
@@ -459,16 +479,16 @@ export default function BulkUploadCandidatesAgencyPage() {
 
                 {validation.errors.length > 0 && (
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                       <p className="text-sm font-medium">Validation errors</p>
                       {validation.errorReportBase64 && (
                         <Button
                           variant="outline"
                           size="sm"
-                          className="gap-2"
+                          className="w-full gap-2 sm:w-auto"
                           onClick={() => downloadBase64Xlsx(validation.errorReportBase64!, `bulk-upload-errors-${Date.now()}.xlsx`)}
                         >
-                          <Download className="h-4 w-4" />
+                          <Download className="h-4 w-4 shrink-0" />
                           Download Error Report
                         </Button>
                       )}
@@ -489,24 +509,38 @@ export default function BulkUploadCandidatesAgencyPage() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <Button variant="outline" onClick={() => setStep(2)} disabled={uploading} className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
+                <div className="flex flex-col gap-3 border-t pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep(2)}
+                    disabled={uploading}
+                    className="w-full gap-2 sm:w-auto"
+                  >
+                    <ArrowLeft className="h-4 w-4 shrink-0" />
                     Back
                   </Button>
-                  <div className="flex gap-2">
-                    <Button variant="outline" disabled={uploading} onClick={() => router.push("/agency/candidates")}>
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
+                    <Button
+                      variant="outline"
+                      disabled={uploading}
+                      onClick={() => router.push("/agency/candidates")}
+                      className="w-full sm:w-auto"
+                    >
                       Go to Candidates
                     </Button>
-                    <Button onClick={handleImport} disabled={uploading || !validation.canImport} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+                    <Button
+                      onClick={handleImport}
+                      disabled={uploading || !validation.canImport}
+                      className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 sm:w-auto"
+                    >
                       {uploading ? (
                         <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                           Importing…
                         </>
                       ) : (
                         <>
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CheckCircle2 className="h-4 w-4 shrink-0" />
                           Confirm Upload
                         </>
                       )}
@@ -521,9 +555,9 @@ export default function BulkUploadCandidatesAgencyPage() {
           {step === 4 && importResult && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                  Upload Completed
+                <CardTitle className="flex items-center gap-2 text-balance">
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                  <span className="min-w-0 leading-tight">Upload Completed</span>
                 </CardTitle>
                 <CardDescription>Your candidates have been imported successfully.</CardDescription>
               </CardHeader>

@@ -19,6 +19,7 @@ interface Demand {
   filledPositions: number
   status: string
   createdAt: string
+  approvalStatus?: "pending" | "approved" | "rejected"
 }
 
 type ViewMode = "grid" | "list"
@@ -26,6 +27,7 @@ type ViewMode = "grid" | "list"
 const statusConfig: Record<string, { label: string; dot: string; badge: string }> = {
   open:   { label: "Open",   dot: "bg-emerald-500", badge: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25" },
   closed: { label: "Closed", dot: "bg-rose-500",    badge: "bg-rose-500/10 text-rose-600 border-rose-500/25" },
+  on_hold:{ label: "On hold", dot: "bg-amber-500", badge: "bg-amber-500/10 text-amber-600 border-amber-500/25" },
   paused: { label: "Paused", dot: "bg-amber-500",   badge: "bg-amber-500/10 text-amber-600 border-amber-500/25" },
 }
 
@@ -37,6 +39,27 @@ function StatusBadge({ status }: { status: string }) {
       {cfg.label}
     </span>
   )
+}
+
+/** Right side of card: Pending / Rejected (admin gate), otherwise Open / Closed / On hold. */
+function DemandRightStatus({ status, approvalStatus }: { status: string; approvalStatus?: Demand["approvalStatus"] }) {
+  if (approvalStatus === "pending") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+        Pending
+      </span>
+    )
+  }
+  if (approvalStatus === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-xs font-semibold text-rose-700 dark:text-rose-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+        Rejected
+      </span>
+    )
+  }
+  return <StatusBadge status={status} />
 }
 
 function FillBar({ filled, total }: { filled?: number; total?: number }) {
@@ -85,7 +108,12 @@ export default function CompanyDemandsPage() {
 
   if (loading) return <PageLoader />
 
-  const open = demands.filter(d => d.status === "open").length
+  const open = demands.filter(d => {
+    if (d.status !== "open") return false
+    const a = d.approvalStatus
+    if (a === "pending" || a === "rejected") return false
+    return true
+  }).length
   const totalPositions = demands.reduce(
     (a, d) => a + (typeof d.positions === "number" ? d.positions : typeof d.quantity === "number" ? d.quantity : 0),
     0,
@@ -193,7 +221,16 @@ export default function CompanyDemandsPage() {
                         <p className="font-semibold text-base leading-snug truncate">{d.jobTitle}</p>
                         <p className="text-sm text-muted-foreground mt-0.5 truncate">{d.companyName}</p>
                       </div>
-                      <StatusBadge status={d.status} />
+                      <div className="flex flex-col items-end gap-1 shrink-0 text-right">
+                        <DemandRightStatus status={d.status} approvalStatus={d.approvalStatus} />
+                        {(d.approvalStatus === "pending" || d.approvalStatus === "rejected") && (
+                          <span className="text-[10px] text-muted-foreground max-w-[9rem] leading-tight">
+                            {d.approvalStatus === "pending"
+                              ? "Admin approval it's required"
+                              : "Not visible to agencies"}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
 
@@ -240,7 +277,7 @@ export default function CompanyDemandsPage() {
                     <div className="flex-1 min-w-0 space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-sm">{d.jobTitle}</p>
-                        <StatusBadge status={d.status} />
+                        <DemandRightStatus status={d.status} approvalStatus={d.approvalStatus} />
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span>{d.companyName}</span>

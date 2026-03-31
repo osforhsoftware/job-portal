@@ -28,6 +28,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { DashboardNotificationBell } from "@/components/dashboard-notification-bell"
+import { BrandLogo } from "@/components/brand-logo"
 import { useTheme } from "next-themes"
 
 function getPageTitle(pathname: string): string {
@@ -126,10 +127,7 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
         className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-card transition-transform lg:static lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <img src="/main-logo.png" alt="TalentBid" className="h-9 w-auto" />
-            {/* <span className="text-xl font-bold text-foreground">TalentBid</span> */}
-          </Link>
+          <BrandLogo />
         </div>
 
         <nav className="flex flex-col gap-1 p-4">

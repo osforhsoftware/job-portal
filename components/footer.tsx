@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Mail, Phone, MapPin } from "lucide-react"
+import { BrandLogo } from "@/components/brand-logo"
 
 const footerLinks = {
   forCandidates: [
@@ -37,20 +38,17 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand */}
           <div className="lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2">
-              <img src="/main-logo.png" alt="TalentBid" className="h-9 w-auto" />
-              {/* <span className="text-xl font-bold text-foreground">TalentBid</span> */}
-            </Link>
+            <BrandLogo />
             <p className="mt-4 text-sm text-muted-foreground">
               Revolutionary recruitment platform connecting talent with opportunities through smart bidding.
             </p>
             <div className="mt-6 space-y-2">
               <a
-                href="mailto:support@talentbid.com"
+                href="mailto:support@onemyjob.com"
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
               >
                 <Mail className="h-4 w-4" />
-                support@talentbid.com
+                support@onemyjob.com
               </a>
               <a
                 href="tel:+1234567890"
@@ -138,7 +136,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} TalentBid. All rights reserved.
+            © {new Date().getFullYear()} ONEMYJOB. All rights reserved.
           </p>
           <div className="flex gap-6">
             <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">

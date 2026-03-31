@@ -4,6 +4,25 @@ import type { BenefitType, NationalityType } from '@/lib/job-config'
 import { apiError } from '@/lib/api-utils'
 import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
+async function notifyAdminsNewDemandPending(jobTitles: string[]) {
+  const admins = (await db.users.getAll()).filter(
+    (u) => u.role === 'admin' || u.role === 'super_admin'
+  )
+  const titleList = jobTitles.join(', ')
+  for (const admin of admins) {
+    await db.notifications
+      .create({
+        recipientType: 'admin',
+        recipientId: admin.id,
+        type: 'approval',
+        title: 'New demand awaiting approval',
+        message: `A company submitted new demand(s) for review: ${titleList}. Approve in Pending Approvals.`,
+        link: '/admin/approvals',
+      })
+      .catch(() => {})
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -131,22 +150,13 @@ export async function POST(request: NextRequest) {
         deadline: deadlineDate,
         jobCategoryId: jobCategoryId || undefined,
         jobSubCategoryId: jobSubCategoryId || undefined,
+        approvalStatus: 'pending',
       })
       created.push({ id: demand.id, jobTitle: demand.jobTitle, quantity: demand.quantity })
     }
 
-    const approvedAgencies = (await db.agencies.getAll()).filter(
-      (a) => (a as { approvalStatus?: string }).approvalStatus === 'approved' && a.isActive
-    )
-    for (const agency of approvedAgencies) {
-      await db.notifications.create({
-        recipientType: 'agency',
-        recipientId: agency.id,
-        type: 'new_demand',
-        title: 'New demand posted',
-        message: `${companyName} posted new demand(s): ${created.map((d) => d.jobTitle).join(', ')}`,
-        link: '/agency/demands',
-      }).catch(() => {})
+    if (created.length) {
+      await notifyAdminsNewDemandPending(created.map((d) => d.jobTitle))
     }
 
     await logActivity({

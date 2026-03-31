@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { demandIsLiveOnMarketplace } from '@/lib/demand-approval'
+import { candidateCanSubmitToDemands } from '@/lib/candidate-demand-eligibility'
 import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 const DIRECT_AGENCY_ID = 'direct'
@@ -23,6 +25,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 })
     }
 
+    if (!demandIsLiveOnMarketplace(demand)) {
+      return NextResponse.json(
+        { error: 'This job is not available for applications yet' },
+        { status: 400 }
+      )
+    }
+
     if (demand.status !== 'open') {
       return NextResponse.json(
         { error: 'This job is no longer accepting applications' },
@@ -33,6 +42,18 @@ export async function POST(request: NextRequest) {
     const candidate = await db.candidates.getById(candidateId)
     if (!candidate) {
       return NextResponse.json({ error: 'Candidate not found' }, { status: 404 })
+    }
+
+    if (!candidateCanSubmitToDemands(candidate)) {
+      return NextResponse.json(
+        {
+          error:
+            candidate.status === 'placed'
+              ? 'You are already placed in a role and cannot apply to other jobs on the platform'
+              : 'Your profile is not available for new applications',
+        },
+        { status: 400 }
+      )
     }
 
     const existingApps = await db.applications.getByDemandId(demandId)

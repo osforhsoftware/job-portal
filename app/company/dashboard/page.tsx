@@ -41,6 +41,8 @@ interface RecentDemand {
   quantity?: number
   filledPositions: number
   status: string
+  /** Admin/super admin publish gate; omitted on legacy rows = treated as approved. */
+  approvalStatus?: "pending" | "approved" | "rejected"
   createdAt: string
   submissionCount: number
   createdByEmployeeName?: string
@@ -78,6 +80,33 @@ function StatusPill({ status }: { status: string }) {
       {c.label}
     </span>
   )
+}
+
+/** Right side of demand cards: admin gate first; once approved, show job status (Open / Closed / On hold). */
+function DemandCardStatusRight({
+  approvalStatus,
+  jobStatus,
+}: {
+  approvalStatus?: RecentDemand["approvalStatus"]
+  jobStatus: string
+}) {
+  if (approvalStatus === "pending") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-500/35 bg-amber-500/10 px-2.5 py-[3px] text-[11px] font-semibold text-amber-800 dark:text-amber-200">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+        Pending
+      </span>
+    )
+  }
+  if (approvalStatus === "rejected") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-rose-500/35 bg-rose-500/10 px-2.5 py-[3px] text-[11px] font-semibold text-rose-800 dark:text-rose-200">
+        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+        Rejected
+      </span>
+    )
+  }
+  return <StatusPill status={jobStatus} />
 }
 
 function Avatar({ name }: { name: string }) {
@@ -325,7 +354,16 @@ export default function CompanyDashboard() {
                               </span>
                             </div>
                           </div>
-                          <StatusPill status={d.status} />
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <DemandCardStatusRight approvalStatus={d.approvalStatus} jobStatus={d.status} />
+                            {(d.approvalStatus === "pending" || d.approvalStatus === "rejected") && (
+                              <span className="text-[10px] text-muted-foreground text-right max-w-[7rem] leading-tight">
+                                {d.approvalStatus === "pending"
+                                  ? "Agencies see it after approval"
+                                  : "Not visible to agencies"}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {/* fill progress */}
                         {total > 0 && (

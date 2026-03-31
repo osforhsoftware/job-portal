@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { demandIsLiveOnMarketplace } from '@/lib/demand-approval'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +18,13 @@ export async function GET(request: NextRequest) {
     const demand = await db.demands.getById(demandId)
     if (!demand) {
       return NextResponse.json({ error: 'Demand not found' }, { status: 404 })
+    }
+
+    if (!demandIsLiveOnMarketplace(demand)) {
+      return NextResponse.json(
+        { error: 'This demand is not yet approved or is not available' },
+        { status: 400 }
+      )
     }
 
     const existingApps = await db.applications.getByDemandId(demandId)

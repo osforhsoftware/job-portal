@@ -19,7 +19,10 @@ export async function GET(request: NextRequest) {
     const demands = await db.demands.getByCompanyId(companyId)
     const applications = await db.applications.getByCompanyId(companyId)
 
-    const openDemands = demands.filter((d) => d.status === 'open')
+    const isApprovedForListing = (d: (typeof demands)[0]) =>
+      d.approvalStatus === 'approved' || d.approvalStatus === undefined
+
+    const openDemands = demands.filter((d) => d.status === 'open' && isApprovedForListing(d))
     const totalSubmissions = applications.length
     const hired = applications.filter((a) => a.status === 'hired' || a.status === 'selected').length
     const shortlisted = applications.filter((a) => a.status === 'shortlisted').length
@@ -99,13 +102,14 @@ export async function GET(request: NextRequest) {
         hiredThisMonth,
         companyName: company.name,
       },
-      recentDemands: recentDemands.map((d) => ({
+      recentDemands:       recentDemands.map((d) => ({
         id: d.id,
         jobTitle: d.jobTitle,
         location: d.location,
         positions: d.quantity,
         filledPositions: d.filledPositions,
         status: d.status,
+        approvalStatus: d.approvalStatus,
         createdAt: d.createdAt,
         createdByEmployeeName: d.createdByEmployeeName,
         submissionCount: applications.filter((a) => a.demandId === d.id).length,

@@ -13,24 +13,21 @@ export const BULK_UPLOAD_MAX_TOTAL_CV_SIZE_BYTES = 500 * 1024 * 1024
 
 export const BULK_UPLOAD_SHEET_NAME = 'Candidates'
 
-export const BULK_UPLOAD_REQUIRED_COLUMNS = [
-  'SLNo',
+// Core required columns (headers must exist in row 1).
+// Name is handled separately via: (firstName + lastName) OR fullname.
+export const BULK_UPLOAD_REQUIRED_COLUMNS = ['email', 'phone', 'dateOfBirth', 'nationality', 'cvFileName'] as const
+
+export const BULK_UPLOAD_OPTIONAL_COLUMNS = [
   'firstName',
   'lastName',
-  'email',
-  'phone',
-  'dateOfBirth',
+  'fullname',
+  'SLNo',
   'gender',
-  'nationality',
   'skill',
   'currentLocation',
   'jobCategories',
   'highestEducation',
-  'cvFileName',
   'candidateSelected',
-] as const
-
-export const BULK_UPLOAD_OPTIONAL_COLUMNS = [
   'preferredLocations',
   'languages',
   'maritalStatus',
@@ -157,7 +154,16 @@ function splitCommaList(raw: string): string[] {
 }
 
 function validateRequiredColumns(headers: string[]): { missing: string[] } {
-  const missing = BULK_UPLOAD_REQUIRED_COLUMNS.filter((col) => !headers.includes(col))
+  const missingCore = BULK_UPLOAD_REQUIRED_COLUMNS.filter((col) => !headers.includes(col))
+
+  const hasFirstName = headers.includes('firstName')
+  const hasLastName = headers.includes('lastName')
+  const hasFullname = headers.includes('fullname')
+  const hasValidName = (hasFirstName && hasLastName) || hasFullname
+
+  const missing: string[] = [...missingCore]
+  if (!hasValidName) missing.push('either (firstName + lastName) OR fullname')
+
   return { missing }
 }
 
@@ -229,6 +235,10 @@ async function parseSpreadsheetToRows(spreadsheetBuffer: Buffer, spreadsheetFile
     throw new Error(`Missing required column(s): ${headerValidation.missing.join(', ')}`)
   }
 
+  const hasFullnameColumn = headerRow.includes('fullname')
+  const hasFirstNameColumn = headerRow.includes('firstName')
+  const hasLastNameColumn = headerRow.includes('lastName')
+
   const get = (row: any[], colName: string) => {
     const idx = headerToIndex.get(colName)
     if (idx === undefined) return ''
@@ -251,11 +261,27 @@ async function parseSpreadsheetToRows(spreadsheetBuffer: Buffer, spreadsheetFile
     const rawSlNo = asTrimmedString(get(row, 'SLNo'))
     const slNo = rawSlNo ? Number(rawSlNo) : NaN
 
+    // Name parsing: prefer `fullname` if present, otherwise use firstName/lastName.
+    let firstName = asTrimmedString(get(row, 'firstName'))
+    let lastName = asTrimmedString(get(row, 'lastName'))
+    if (hasFullnameColumn) {
+      const full = asTrimmedString(get(row, 'fullname'))
+      if (full) {
+        const tokens = full.split(/\s+/).map((s) => s.trim()).filter(Boolean)
+        firstName = tokens[0] ?? ''
+        lastName = tokens.slice(1).join(' ')
+      }
+    } else {
+      // Header validation should prevent this situation, but keep safe defaults.
+      if (!hasFirstNameColumn) firstName = ''
+      if (!hasLastNameColumn) lastName = ''
+    }
+
     parsed.push({
       rowNo,
       slNo: slNo,
-      firstName: asTrimmedString(get(row, 'firstName')),
-      lastName: asTrimmedString(get(row, 'lastName')),
+      firstName,
+      lastName,
       email: asTrimmedString(get(row, 'email')).toLowerCase(),
       phone: asTrimmedString(get(row, 'phone')),
       dateOfBirth: asTrimmedString(get(row, 'dateOfBirth')),
@@ -348,20 +374,13 @@ export async function validateBulkUploadCandidates(args: {
     const rowErrors: string[] = []
 
     const requiredPairs: Array<[keyof BulkUploadParsedRow, string]> = [
-      ['slNo', 'SLNo'],
       ['firstName', 'firstName'],
       ['lastName', 'lastName'],
       ['email', 'email'],
       ['phone', 'phone'],
       ['dateOfBirth', 'dateOfBirth'],
-      ['gender', 'gender'],
       ['nationality', 'nationality'],
-      ['skill', 'skill'],
-      ['currentLocation', 'currentLocation'],
-      ['jobCategories', 'jobCategories'],
-      ['highestEducation', 'highestEducation'],
       ['cvFileName', 'cvFileName'],
-      ['candidateSelectedRaw', 'candidateSelected'],
     ]
 
     for (const [k, label] of requiredPairs) {
@@ -375,10 +394,13 @@ export async function validateBulkUploadCandidates(args: {
       if (empty) rowErrors.push(`Row ${row.rowNo}: '${label}' is required`)
     }
 
-    if (Number.isFinite(row.slNo) && row.slNo > 0) {
-      // ok
-    } else if (row.slNo !== undefined) {
+    // Validate SLNo only if provided. (Missing becomes NaN.)
+    if (!Number.isNaN(row.slNo)) {
+      if (Number.isInteger(row.slNo) && row.slNo > 0) {
+        // ok
+      } else {
       rowErrors.push(`Row ${row.rowNo}: SLNo must be a positive integer`)
+      }
     }
 
     // email format
@@ -424,8 +446,7 @@ export async function validateBulkUploadCandidates(args: {
       ;(row as any).maritalStatus = normalized
     }
 
-    // skill
-    if (!row.skill || row.skill.length === 0) rowErrors.push(`Row ${row.rowNo}: skill must be a comma-separated list`)
+    // skill is optional (empty list is allowed)
 
     // currentSalary & salaryExpectation (optional)
     if (row.currentSalary) {
@@ -470,12 +491,13 @@ export async function validateBulkUploadCandidates(args: {
       if (parsedVisa) (row as any).visaValidityDate = parsedVisa
     }
 
-    // candidateSelected
-    const parsedCandidateSelected = toBooleanYesNo(row.candidateSelectedRaw, rowErrors, 'candidateSelected')
-    if (typeof parsedCandidateSelected === 'boolean') row.candidateSelected = parsedCandidateSelected
+    // candidateSelected is optional; validate only if provided.
+    if (row.candidateSelectedRaw && row.candidateSelectedRaw.trim()) {
+      const parsedCandidateSelected = toBooleanYesNo(row.candidateSelectedRaw, rowErrors, 'candidateSelected')
+      if (typeof parsedCandidateSelected === 'boolean') row.candidateSelected = parsedCandidateSelected
+    }
 
-    // jobCategories
-    if (!row.jobCategories || row.jobCategories.length === 0) rowErrors.push(`Row ${row.rowNo}: jobCategories must be a comma-separated list`)
+    // jobCategories is optional (empty list is allowed)
 
     // cvFileName tracking
     if (row.cvFileName) {

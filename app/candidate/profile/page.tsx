@@ -24,7 +24,9 @@ import {
   Trash2,
   AlertCircle,
   Sparkles,
+  LogIn,
 } from "lucide-react"
+import { CandidateHubNav } from "@/components/candidate/candidate-hub-nav"
 
 type CandidateProfile = {
   id: string
@@ -61,7 +63,6 @@ function missingProfileFields(c: CandidateProfile) {
 
   const req = [
     { key: "firstName", label: "First name", ok: !!c.firstName },
-    { key: "lastName", label: "Last name", ok: !!c.lastName },
     { key: "email", label: "Email", ok: !!c.email },
     { key: "phone", label: "Phone", ok: !!c.phone },
     { key: "gender", label: "Gender", ok: !!c.gender },
@@ -133,32 +134,40 @@ export default function CandidateProfilePage() {
 
   useEffect(() => {
     const userStr = localStorage.getItem("user")
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr)
-        setCandidateId(user.id)
-        if (user.cvUrl) setCvUrl(user.cvUrl)
-        if (user.videoUrl) setVideoUrl(user.videoUrl)
+    if (!userStr) {
+      setLoadingProfile(false)
+      return
+    }
+    try {
+      const user = JSON.parse(userStr)
+      const id = user.id as string | undefined
+      if (!id) {
+        setLoadingProfile(false)
+        return
+      }
+      setCandidateId(id)
+      if (user.cvUrl) setCvUrl(user.cvUrl)
+      if (user.videoUrl) setVideoUrl(user.videoUrl)
 
-        fetch(`/api/candidate/profile?candidateId=${encodeURIComponent(user.id)}`)
-          .then((res) => res.ok ? res.json() : Promise.reject())
+      Promise.all([
+        fetch(`/api/candidate/profile?candidateId=${encodeURIComponent(id)}`)
+          .then((res) => (res.ok ? res.json() : Promise.reject()))
           .then((data) => {
             if (data?.candidate) setProfile(data.candidate)
             if (data?.profileCompletion != null) setProfileCompletion(data.profileCompletion)
           })
-          .catch(() => {})
-          .finally(() => setLoadingProfile(false))
-
-        fetch(`/api/candidate/files?candidateId=${user.id}`)
+          .catch(() => {}),
+        fetch(`/api/candidate/files?candidateId=${id}`)
           .then((res) => res.json())
           .then((data) => {
             if (data.cvUrl) setCvUrl(data.cvUrl)
             if (data.videoUrl) setVideoUrl(data.videoUrl)
           })
-          .catch(() => {})
-      } catch {}
+          .catch(() => {}),
+      ]).finally(() => setLoadingProfile(false))
+    } catch {
+      setLoadingProfile(false)
     }
-    setLoadingProfile(false)
   }, [])
 
   const handleCvSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,19 +347,54 @@ export default function CandidateProfilePage() {
     return (b / (1024 * 1024)).toFixed(1) + " MB"
   }
 
+  if (!loadingProfile && !candidateId) {
+    return (
+      <div className="container mx-auto max-w-4xl px-4 py-8">
+        <CandidateHubNav className="mb-6" />
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+              <LogIn className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">Sign in to manage your profile</h1>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                Your CV, video intro, and completion checklist are available after you log in as a job seeker.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button asChild>
+                <Link href="/login/candidate?redirect=/candidate/profile">Sign in</Link>
+              </Button>
+              <Button asChild variant="outline" className="bg-transparent">
+                <Link href="/register/candidate">Create account</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
-      <div className="mb-6 flex items-center gap-4">
-        <Link href="/candidate/dashboard">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
-          <p className="text-sm text-muted-foreground">Manage your CV and video introduction</p>
+      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/candidate/dashboard">
+            <Button variant="ghost" size="icon" aria-label="Back to dashboard">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
+            <p className="text-sm text-muted-foreground">
+              Review your visibility, then update details or upload CV & video.
+            </p>
+          </div>
         </div>
       </div>
+
+      <CandidateHubNav className="mb-6" />
 
       {/* Profile completion + missing fields */}
       <Card className="mb-6 border-primary/30 bg-primary/5">
@@ -370,14 +414,9 @@ export default function CandidateProfilePage() {
                 Complete your profile to unlock job applications and increase visibility.
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button asChild>
-                <Link href="/candidate/profile/edit">Update Profile</Link>
-              </Button>
-              <Button asChild variant="outline" className="bg-transparent">
-                <Link href="/candidate/dashboard">Dashboard</Link>
-              </Button>
-            </div>
+            <Button asChild>
+              <Link href="/candidate/profile/edit">Edit profile details</Link>
+            </Button>
           </div>
           <Progress value={profileCompletion ?? 0} className="h-2" />
 

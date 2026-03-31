@@ -267,8 +267,10 @@ export async function POST(request: NextRequest) {
       message: 'Candidate registered successfully',
       user: {
         id: candidate.id,
+        candidateId: candidate.id,
         email: candidate.email,
         name: `${candidate.firstName} ${candidate.lastName}`,
+        role: 'candidate' as const,
         cvUrl,
         ...(videoUrl && { videoUrl }),
       },

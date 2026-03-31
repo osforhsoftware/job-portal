@@ -74,7 +74,8 @@ export interface Candidate {
   // Video
   videoUrl?: string
   // Status
-  status: 'available' | 'under_bidding' | 'interviewed' | 'selected' | 'on_hold'
+  /** `placed` = hired via a company submission; excluded from new demand applications */
+  status: 'available' | 'under_bidding' | 'interviewed' | 'selected' | 'on_hold' | 'placed'
   visaCategory?: string
   salaryRange?: { min: number; max: number }
   /** UI alias for expected salary (bulk upload / forms) */
@@ -309,9 +310,11 @@ export interface Demand {
   // Job category & sub-category (optional, for structured classification)
   jobCategoryId?: string
   jobSubCategoryId?: string
+  /** New demands start pending; admin/super_admin must approve before agencies see them. Omitted on old rows = treated as approved. */
+  approvalStatus?: 'pending' | 'approved' | 'rejected'
 }
 
-export type DemandEditRequestStatus = 'pending' | 'approved' | 'rejected'
+export type DemandEditRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
 
 export interface DemandEditRequest {
   id: string
@@ -1000,9 +1003,37 @@ export const db = {
       const demands = await db.collection('demands').find({}).sort({ createdAt: -1 }).toArray()
       return demands.map(doc => toInterface<Demand>(doc))
     },
+    /** Demands visible to agencies and public job listings (approved or legacy). */
+    getMarketplaceVisible: async (): Promise<Demand[]> => {
+      const db = await getDatabase()
+      const demands = await db
+        .collection('demands')
+        .find({
+          $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }],
+        })
+        .sort({ createdAt: -1 })
+        .toArray()
+      return demands.map((doc) => toInterface<Demand>(doc))
+    },
+    getPendingNewDemands: async (): Promise<Demand[]> => {
+      const db = await getDatabase()
+      const demands = await db
+        .collection('demands')
+        .find({ approvalStatus: 'pending' })
+        .sort({ createdAt: -1 })
+        .toArray()
+      return demands.map((doc) => toInterface<Demand>(doc))
+    },
     getOpen: async (): Promise<Demand[]> => {
       const db = await getDatabase()
-      const demands = await db.collection('demands').find({ status: 'open' }).sort({ createdAt: -1 }).toArray()
+      const demands = await db
+        .collection('demands')
+        .find({
+          status: 'open',
+          $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }],
+        })
+        .sort({ createdAt: -1 })
+        .toArray()
       return demands.map(doc => toInterface<Demand>(doc))
     },
     getByCompanyId: async (companyId: string): Promise<Demand[]> => {
@@ -1072,6 +1103,34 @@ export const db = {
       const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { id }
       const doc = await db.collection('demandEditRequests').findOne(query)
       return doc ? toInterface<DemandEditRequest>(doc) : undefined
+    },
+    getPendingForDemand: async (
+      demandId: string,
+      companyId: string
+    ): Promise<DemandEditRequest | undefined> => {
+      const db = await getDatabase()
+      const list = await db
+        .collection('demandEditRequests')
+        .find({ demandId, companyId, status: 'pending' })
+        .sort({ requestedAt: -1 })
+        .limit(1)
+        .toArray()
+      return list[0] ? toInterface<DemandEditRequest>(list[0]) : undefined
+    },
+    cancelPendingForDemand: async (demandId: string, companyId: string): Promise<number> => {
+      const db = await getDatabase()
+      const now = new Date().toISOString()
+      const result = await db.collection('demandEditRequests').updateMany(
+        { demandId, companyId, status: 'pending' },
+        {
+          $set: {
+            status: 'cancelled' as const,
+            reviewedAt: now,
+            reviewNote: 'Cancelled by company',
+          },
+        }
+      )
+      return result.modifiedCount ?? 0
     },
     create: async (
       req: Omit<DemandEditRequest, 'id' | 'requestedAt' | 'status'>

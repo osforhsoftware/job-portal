@@ -1,3 +1,5 @@
+import { BrandLogo } from "@/components/brand-logo"
+
 export default function RootLoading() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
@@ -22,9 +24,8 @@ export default function RootLoading() {
             </svg>
           </div>
         </div>
-        <div className="text-center loading-fade-up">
-          <img src="/main-logo.png" alt="TalentBid" className="mx-auto h-10 w-auto" />
-          {/* <p className="mt-2 text-base font-semibold text-foreground">TalentBid</p> */}
+        <div className="flex justify-center text-center loading-fade-up">
+          <BrandLogo size="lg" />
           {/* <p className="text-xs text-muted-foreground mt-1">Loading...</p> */}
         </div>
 

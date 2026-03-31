@@ -14,23 +14,19 @@ const _inter = Inter({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'TalentBid - Smart Recruitment & Bidding Platform',
+  title: 'ONEMYJOB - Smart Recruitment & Bidding Platform',
   description: 'Revolutionary job recruitment platform with bidding system for candidates, companies, and agencies',
   // generator: 'v0.app',
   icons: {
-    icon: [
-      { url: '/jobportal-logo.png', media: '(prefers-color-scheme: light)' },
-      { url: '/jobportal-logo.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/jobportal-logo.png', type: 'image/png' },
-    ],
+    icon: [{ url: '/onemycv.jpeg', type: 'image/jpeg' }],
     apple: '/apple-icon.png',
   },
 }
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f8f8f8' },
-    { media: '(prefers-color-scheme: dark)', color: '#1a1a1a' },
+    { media: '(prefers-color-scheme: light)', color: '#f4faf7' },
+    { media: '(prefers-color-scheme: dark)', color: '#141a22' },
   ],
   width: 'device-width',
   initialScale: 1,

@@ -32,12 +32,12 @@ import {
   LogIn,
   LogOut,
   Globe,
-  LayoutDashboard,
   User,
   MessageSquare,
   Bell,
 } from "lucide-react"
 import { DashboardNotificationBell } from "@/components/dashboard-notification-bell"
+import { BrandLogo } from "@/components/brand-logo"
 
 const navigation = [
   { name: "Home", href: "/" },
@@ -53,12 +53,32 @@ const languages = [
   { code: "hi", name: "हिन्दी" },
 ]
 
-function getDashboardHref(role: string): string {
-  if (role === "candidate") return "/candidate/dashboard"
-  if (role === "company" || role === "corporate") return "/company/dashboard"
-  if (role === "staff") return "/company/dashboard"
-  if (role === "agency") return "/agency/dashboard"
-  if (role === "agent") return "/agent/dashboard"
+/** User menu: profile hub (edit available from profile page) */
+function getProfileHref(role: string): string {
+  if (role === "candidate") return "/candidate/profile"
+  if (role === "company" || role === "corporate" || role === "staff") return "/company/dashboard"
+  if (role === "agency") return "/agency/settings"
+  if (role === "agent") return "/agent/settings"
+  if (role === "admin" || role === "super_admin") return "/admin/settings"
+  return "/"
+}
+
+/** User menu: view alerts / activity (aligned with notification bell “view all”) */
+function getNotificationsHref(role: string): string {
+  if (role === "candidate") return "/candidate/notifications"
+  if (role === "company" || role === "corporate" || role === "staff") return "/company/demands"
+  if (role === "agency") return "/agency/demands"
+  if (role === "agent") return "/agent/applications"
+  if (role === "admin" || role === "super_admin") return "/admin/approvals"
+  return "/"
+}
+
+/** User menu: messaging (paths exist for candidate + company; others use closest hub) */
+function getMessagesHref(role: string): string {
+  if (role === "candidate") return "/candidate/messages"
+  if (role === "company" || role === "corporate" || role === "staff") return "/company/messages"
+  if (role === "agency") return "/agency/applications"
+  if (role === "agent") return "/agent/applications"
   if (role === "admin" || role === "super_admin") return "/admin/dashboard"
   return "/"
 }
@@ -77,13 +97,38 @@ function getRoleLabel(role: string): string {
   return labels[role] || role
 }
 
-function readStoredUser(): { id?: string; name?: string; email?: string; role?: string } | null {
+type StoredUserShape = {
+  id?: string
+  name?: string
+  email?: string
+  role?: string
+  image?: string
+  companyId?: string
+  agencyId?: string
+  agentId?: string
+  candidateId?: string
+}
+
+/** Registration used to omit role; infer so Profile / Messages links are not "/" */
+function normalizeStoredUser(raw: StoredUserShape): StoredUserShape {
+  if (raw.role) return raw
+  if (raw.candidateId) return { ...raw, role: "candidate" }
+  if (raw.agentId) return { ...raw, role: "agent" }
+  if (raw.companyId) return { ...raw, role: "company" }
+  if (raw.agencyId) return { ...raw, role: "agency" }
+  if (raw.id && raw.email && !raw.companyId && !raw.agencyId && !raw.agentId) {
+    return { ...raw, role: "candidate", candidateId: raw.candidateId ?? raw.id }
+  }
+  return raw
+}
+
+function readStoredUser(): StoredUserShape | null {
   if (typeof window === "undefined") return null
   try {
     const stored = localStorage.getItem("user")
     const token = localStorage.getItem("token")
     if (!stored || !token) return null
-    return JSON.parse(stored)
+    return normalizeStoredUser(JSON.parse(stored) as StoredUserShape)
   } catch {
     return null
   }
@@ -121,21 +166,28 @@ export function Header() {
     const stored = readStoredUser()
     if (stored) {
       setUser(stored)
+      try {
+        localStorage.setItem("user", JSON.stringify(stored))
+      } catch {
+        /* ignore */
+      }
       return
     }
     if (session?.user) {
       const su = session.user as Record<string, unknown>
-      setUser({
-        id: su.id as string | undefined,
-        role: su.role as string | undefined,
-        name: (session.user.name as string) || undefined,
-        email: (session.user.email as string) || undefined,
-        image: su.image as string | undefined,
-        companyId: su.companyId as string | undefined,
-        agencyId: su.agencyId as string | undefined,
-        agentId: su.agentId as string | undefined,
-        candidateId: su.candidateId as string | undefined,
-      })
+      setUser(
+        normalizeStoredUser({
+          id: su.id as string | undefined,
+          role: su.role as string | undefined,
+          name: (session.user.name as string) || undefined,
+          email: (session.user.email as string) || undefined,
+          image: su.image as string | undefined,
+          companyId: su.companyId as string | undefined,
+          agencyId: su.agencyId as string | undefined,
+          agentId: su.agentId as string | undefined,
+          candidateId: su.candidateId as string | undefined,
+        })
+      )
     }
   }, [session])
 
@@ -153,10 +205,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <img src="/main-logo.png" alt="TalentBid" className="h-9 w-auto" />
-          {/* <span className="text-xl font-bold text-foreground">TalentBid</span> */}
-        </Link>
+        <BrandLogo />
 
         {/* Desktop Navigation */}
         <nav className="hidden items-center gap-1 lg:flex">
@@ -278,38 +327,48 @@ export function Header() {
                 <div className="px-2 py-1.5 text-xs text-muted-foreground">
                   {user.email}
                 </div>
-                <DropdownMenuSeparator />
-                {user.role === "candidate" ? (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link href="/candidate/profile" className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        Profile
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/candidate/messages" className="flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4" />
-                        Messages
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/candidate/notifications" className="flex items-center gap-2">
-                        <Bell className="h-4 w-4" />
-                        Notifications
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <DropdownMenuItem asChild>
-                    <Link href={getDashboardHref(user.role || "")} className="flex items-center gap-2">
-                      <LayoutDashboard className="h-4 w-4" />
-                      {`${getRoleLabel(user.role || "")} Dashboard`}
-                    </Link>
-                  </DropdownMenuItem>
+                {user.role && (
+                  <div className="px-2 pb-1 text-xs font-medium text-muted-foreground">
+                    {getRoleLabel(user.role)}
+                  </div>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setLogoutConfirmOpen(true)} className="text-destructive focus:text-destructive">
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={() => {
+                    const href = getProfileHref(user.role || "")
+                    queueMicrotask(() => router.push(href))
+                  }}
+                >
+                  <User className="h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={() => {
+                    const href = getNotificationsHref(user.role || "")
+                    queueMicrotask(() => router.push(href))
+                  }}
+                >
+                  <Bell className="h-4 w-4" />
+                  Notifications
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={() => {
+                    const href = getMessagesHref(user.role || "")
+                    queueMicrotask(() => router.push(href))
+                  }}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Messages
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="cursor-pointer"
+                  onSelect={() => setLogoutConfirmOpen(true)}
+                >
                   <LogOut className="h-4 w-4" />
                   Logout
                 </DropdownMenuItem>
@@ -449,49 +508,42 @@ export function Header() {
                     <p className="px-4 text-sm font-medium text-foreground truncate">
                       {user.name || user.email}
                     </p>
-                    {user.role === "candidate" ? (
-                      <>
-                        <Link
-                          href="/candidate/dashboard"
-                          onClick={() => setIsOpen(false)}
-                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
-                        >
-                          <LayoutDashboard className="h-5 w-5" />
-                          Dashboard
-                        </Link>
-                        <Link
-                          href="/candidate/profile"
-                          onClick={() => setIsOpen(false)}
-                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
-                        >
-                          <User className="h-5 w-5" />
-                          Profile
-                        </Link>
-                        <Link
-                          href="/candidate/messages"
-                          onClick={() => setIsOpen(false)}
-                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
-                        >
-                          <MessageSquare className="h-5 w-5" />
-                          Messages
-                        </Link>
-                      </>
-                    ) : (
-                      <Link
-                        href={getDashboardHref(user.role || "")}
-                        onClick={() => setIsOpen(false)}
-                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
-                      >
-                        <LayoutDashboard className="h-5 w-5" />
-                        Dashboard
-                      </Link>
+                    {user.role && (
+                      <p className="px-4 text-xs text-muted-foreground">
+                        {getRoleLabel(user.role)}
+                      </p>
                     )}
-                    <button
-                      onClick={() => setLogoutConfirmOpen(true)}
-                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-destructive hover:bg-destructive/10"
+                    <Link
+                      href={getProfileHref(user.role || "")}
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
                     >
-                      <LogOut className="h-5 w-5" />
-                      Logout
+                      <User className="h-5 w-5 shrink-0" />
+                      <span className="min-w-0 leading-snug">Profile</span>
+                    </Link>
+                    <Link
+                      href={getNotificationsHref(user.role || "")}
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
+                    >
+                      <Bell className="h-5 w-5 shrink-0" />
+                      <span className="min-w-0 leading-snug">Notifications</span>
+                    </Link>
+                    <Link
+                      href={getMessagesHref(user.role || "")}
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
+                    >
+                      <MessageSquare className="h-5 w-5 shrink-0" />
+                      <span className="min-w-0 leading-snug">Messages</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setLogoutConfirmOpen(true)}
+                      className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-destructive hover:bg-destructive/10"
+                    >
+                      <LogOut className="h-5 w-5 shrink-0" />
+                      <span className="min-w-0 leading-snug">Logout</span>
                     </button>
                   </div>
                 ) : (
@@ -505,24 +557,24 @@ export function Header() {
                         onClick={() => setIsOpen(false)}
                         className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
                       >
-                        <Users className="h-5 w-5" />
-                        Job Seeker
+                        <Users className="h-5 w-5 shrink-0" />
+                        <span className="min-w-0 leading-snug">Job Seeker</span>
                       </Link>
                       <Link
                         href="/login/company"
                         onClick={() => setIsOpen(false)}
                         className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
                       >
-                        <Building2 className="h-5 w-5" />
-                        Company
+                        <Building2 className="h-5 w-5 shrink-0" />
+                        <span className="min-w-0 leading-snug">Company</span>
                       </Link>
                       <Link
                         href="/login/agency"
                         onClick={() => setIsOpen(false)}
                         className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
                       >
-                        <Briefcase className="h-5 w-5" />
-                        Agency
+                        <Briefcase className="h-5 w-5 shrink-0" />
+                        <span className="min-w-0 leading-snug">Agency</span>
                       </Link>
                     </div>
 

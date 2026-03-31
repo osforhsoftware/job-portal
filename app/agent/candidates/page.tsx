@@ -68,6 +68,7 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   interviewed:   { label: "Interviewed",   className: "bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-900/20 dark:text-violet-400 dark:border-violet-800" },
   selected:      { label: "Selected",      className: "bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-800" },
   on_hold:       { label: "On Hold",       className: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800" },
+  placed:        { label: "Placed",        className: "bg-emerald-950/30 text-emerald-200 border border-emerald-700/50 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
 }
 
 const LANGUAGE_OPTIONS = [

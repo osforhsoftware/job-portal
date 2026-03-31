@@ -317,7 +317,7 @@ export default function CreateDemandPage() {
       })
       const data = await res.json()
       if (data.success) {
-        toast.success("Demand created. Visible to all approved agencies.")
+        toast.success("Demand submitted. An admin will review it before it appears to agencies.")
         router.push("/company/demands")
       } else {
         toast.error(data.error || "Failed to create demand")
@@ -351,11 +351,11 @@ export default function CreateDemandPage() {
                 <Tags className="h-5 w-5" />
                 <Label className="text-base font-medium">Job Category</Label>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-4">
+                <div className="min-w-0 w-full flex-1 basis-0 space-y-2">
                   <Label>Category</Label>
                   <Select value={jobCategoryId} onValueChange={setJobCategoryId}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full min-w-0 max-w-full">
                       <SelectValue placeholder={categoriesLoading ? "Loading…" : "Select category"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -377,14 +377,14 @@ export default function CreateDemandPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 w-full flex-1 basis-0 space-y-2">
                   <Label>Sub-category</Label>
                   <Select
                     value={jobSubCategoryId}
                     onValueChange={setJobSubCategoryId}
                     disabled={!jobCategoryId}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full min-w-0 max-w-full">
                       <SelectValue placeholder={jobCategoryId ? "Select sub-category" : "Select category first"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -396,7 +396,7 @@ export default function CreateDemandPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 w-full shrink-0 space-y-2 md:w-24 md:max-w-[8rem]">
                   <Label htmlFor="quantity">Quantity</Label>
                   <Input
                     id="quantity"
@@ -406,7 +406,7 @@ export default function CreateDemandPage() {
                     placeholder="Qty"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
-                    className="w-32"
+                    className="w-full min-w-0"
                   />
                 </div>
               </div>
@@ -452,7 +452,7 @@ export default function CreateDemandPage() {
               <div className="space-y-2">
                 <Label>Location (Country / State / City)</Label>
                 <div className="grid gap-3 md:grid-cols-3">
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1">
                     <Label htmlFor="country-select" className="text-xs text-muted-foreground">
                       Country
                     </Label>
@@ -489,7 +489,7 @@ export default function CreateDemandPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1">
                     <Label htmlFor="state-select" className="text-xs text-muted-foreground">
                       State / Region
                     </Label>
@@ -539,7 +539,7 @@ export default function CreateDemandPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1">
                     <Label htmlFor="city-select" className="text-xs text-muted-foreground">
                       City
                     </Label>
@@ -643,7 +643,7 @@ export default function CreateDemandPage() {
             </section>
 
             {/* ── Salary ── */}
-            <section className="grid grid-cols-2 gap-3">
+            <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="salaryAmount">Salary amount</Label>
                 <Input id="salaryAmount" type="number" min={0} placeholder="e.g. 2000"
@@ -657,7 +657,7 @@ export default function CreateDemandPage() {
             </section>
 
             {/* ── Work schedule ── */}
-            <section className="grid grid-cols-3 gap-3">
+            <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="dutyHoursPerDay">Duty hrs / day</Label>
                 <Input id="dutyHoursPerDay" type="number" min={0} value={dutyHoursPerDay}

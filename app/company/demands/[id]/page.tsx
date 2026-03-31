@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ArrowLeft, Play, Loader2, Briefcase, Mail, Phone,
   Lock, Crown, CheckCircle2, XCircle, Clock, Star,
-  MessageSquare, ChevronRight, Building2, FileText, Users, Pencil, Trash2, Sparkles,
+  MessageSquare, ChevronRight, Building2, FileText, Users, Pencil, Trash2, Sparkles, Ban,
 } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toast } from "sonner"
 import { PageLoader } from "@/components/page-loader"
 
@@ -91,6 +92,7 @@ type DemandInfo = {
   otherBenefitNote?: string
   deadline?: string
   createdAt?: string
+  approvalStatus?: "pending" | "approved" | "rejected"
 }
 
 interface RecommendedCandidate {
@@ -122,6 +124,12 @@ export default function CompanyDemandSubmissionsPage() {
     totalCVDownloads: number; freeCandidateLimit: number; level: string | null; status: string | null
   } | null>(null)
   const [recommended, setRecommended] = useState<RecommendedCandidate[]>([])
+  const [pendingRequest, setPendingRequest] = useState<{
+    id: string
+    requestedAt: string
+    isDelete: boolean
+  } | null>(null)
+  const [cancellingPending, setCancellingPending] = useState(false)
 
   useEffect(() => {
     const user = localStorage.getItem("user")
@@ -135,7 +143,8 @@ export default function CompanyDemandSubmissionsPage() {
       fetch(`/api/company/submissions?companyId=${cid}&demandId=${demandId}`).then(r => r.json()),
       fetch(`/api/company/stats?companyId=${cid}`).then(r => r.json()),
       fetch(`/api/company/recommended-candidates?companyId=${cid}&demandId=${demandId}`).then(r => r.json()),
-    ]).then(([dRes, sRes, stRes, recRes]) => {
+      fetch(`/api/company/demands/${demandId}/pending-request?companyId=${encodeURIComponent(cid)}`).then(r => r.json()),
+    ]).then(([dRes, sRes, stRes, recRes, pendRes]) => {
       if (dRes.success && dRes.demands) {
         const d = dRes.demands.find((x: { id: string }) => x.id === demandId)
         if (d) {
@@ -158,6 +167,7 @@ export default function CompanyDemandSubmissionsPage() {
             otherBenefitNote: d.otherBenefitNote,
             deadline: d.deadline,
             createdAt: d.createdAt,
+            approvalStatus: d.approvalStatus,
           })
         }
       }
@@ -170,6 +180,16 @@ export default function CompanyDemandSubmissionsPage() {
         level: stRes.plan.level ?? null, status: stRes.plan.status ?? null,
       })
       if (recRes?.success && recRes.candidates) setRecommended(recRes.candidates)
+      if (pendRes?.success && pendRes.pending) {
+        const p = pendRes.pending as { id: string; requestedAt: string; changes?: { markForDelete?: boolean } }
+        setPendingRequest({
+          id: p.id,
+          requestedAt: p.requestedAt,
+          isDelete: !!p.changes?.markForDelete,
+        })
+      } else {
+        setPendingRequest(null)
+      }
     }).catch(console.error).finally(() => setLoading(false))
   }, [demandId, router])
 
@@ -201,9 +221,55 @@ export default function CompanyDemandSubmissionsPage() {
     toast.success(`Downloading CV for ${candidateName}`)
   }
 
+  const cancelPendingRequest = async () => {
+    if (!companyId || !demandId || !pendingRequest) return
+    const ok = window.confirm(
+      pendingRequest.isDelete
+        ? "Cancel your pending delete request? The demand will stay active until you request deletion again."
+        : "Cancel your pending edit request? Your proposed changes will be discarded."
+    )
+    if (!ok) return
+    setCancellingPending(true)
+    try {
+      const userRaw = localStorage.getItem("user")
+      const u = userRaw ? JSON.parse(userRaw) : null
+      const res = await fetch(`/api/company/demands/${demandId}/pending-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId,
+          requestedByUserId: u?.id,
+          requestedByEmployeeName: u?.name ?? u?.contactName,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setPendingRequest(null)
+        toast.success(
+          "Request cancelled. The live demand was never changed—only the pending approval was removed."
+        )
+      } else {
+        toast.error(data.error || "Could not cancel request")
+      }
+    } catch {
+      toast.error("Could not cancel request")
+    } finally {
+      setCancellingPending(false)
+    }
+  }
+
   const handleDeleteRequest = async () => {
     if (!companyId || !demandId) return
-    const ok = window.confirm("Request to delete this demand? Admin/superadmin must approve before it is removed.")
+    if (pendingRequest) {
+      toast.error("Cancel your pending request first, or wait for admin approval.")
+      return
+    }
+    const isPendingNew = demand?.approvalStatus === "pending"
+    const ok = isPendingNew
+      ? window.confirm(
+          "Withdraw this demand? It is not visible to agencies until an admin approves it, and it will be removed permanently."
+        )
+      : window.confirm("Request to delete this demand? Admin/superadmin must approve before it is removed.")
     if (!ok) return
     try {
       const userRaw = localStorage.getItem("user")
@@ -218,9 +284,19 @@ export default function CompanyDemandSubmissionsPage() {
         }),
       })
       const data = await res.json()
-      if (data.success) {
+      if (data.success && data.withdrawn) {
+        toast.success("Pending demand withdrawn.")
+        router.push("/company/demands")
+      } else if (data.success) {
         toast.success("Delete request submitted. Waiting for admin approval.")
         router.push("/company/demands")
+      } else if (res.status === 409 && data?.code === "PENDING_REQUEST_EXISTS") {
+        toast.error(data?.error || "A pending request already exists.")
+        const pr = await fetch(`/api/company/demands/${demandId}/pending-request?companyId=${encodeURIComponent(companyId)}`).then((r) => r.json())
+        if (pr?.success && pr.pending) {
+          const p = pr.pending as { id: string; requestedAt: string; changes?: { markForDelete?: boolean } }
+          setPendingRequest({ id: p.id, requestedAt: p.requestedAt, isDelete: !!p.changes?.markForDelete })
+        }
       } else {
         toast.error(data.error || "Failed to submit delete request")
       }
@@ -237,6 +313,7 @@ export default function CompanyDemandSubmissionsPage() {
   const counts     = submissions.reduce((a, s) => { a[s.status] = (a[s.status] ?? 0) + 1; return a }, {} as Record<string, number>)
   const hired      = counts["hired"] ?? 0
   const hireRate   = submissions.length ? Math.round((hired / submissions.length) * 100) : 0
+  const awaitingNewApproval = demand?.approvalStatus === "pending"
 
   return (
     <div className="min-h-screen bg-background">
@@ -266,22 +343,81 @@ export default function CompanyDemandSubmissionsPage() {
             <span className="text-muted-foreground">total</span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild className="rounded-full">
-              <Link href={`/company/demands/${demandId}/edit`} className="inline-flex items-center gap-2">
-                <Pencil className="h-3.5 w-3.5" />
-                Request edit
-              </Link>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {pendingRequest && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full border-amber-300 text-amber-800 hover:bg-amber-50"
+                disabled={cancellingPending}
+                onClick={cancelPendingRequest}
+              >
+                {cancellingPending ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Ban className="mr-1 h-3.5 w-3.5" />
+                )}
+                Cancel pending request
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              disabled={!!pendingRequest || awaitingNewApproval}
+              asChild={!pendingRequest && !awaitingNewApproval}
+            >
+              {pendingRequest || awaitingNewApproval ? (
+                <span className="inline-flex cursor-not-allowed items-center gap-2 opacity-50">
+                  <Pencil className="h-3.5 w-3.5" />
+                  Request edit
+                </span>
+              ) : (
+                <Link href={`/company/demands/${demandId}/edit`} className="inline-flex items-center gap-2">
+                  <Pencil className="h-3.5 w-3.5" />
+                  Request edit
+                </Link>
+              )}
             </Button>
-            <Button variant="outline" size="sm" className="rounded-full border-rose-300 text-rose-600 hover:bg-rose-50" onClick={handleDeleteRequest}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full border-rose-300 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+              onClick={handleDeleteRequest}
+              disabled={!!pendingRequest}
+            >
               <Trash2 className="mr-1 h-3.5 w-3.5" />
-              Request delete
+              {awaitingNewApproval ? "Withdraw demand" : "Request delete"}
             </Button>
           </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-6xl space-y-5 px-4 py-6 lg:px-8">
+
+        {pendingRequest && (
+          <Alert className="border-amber-500/40 bg-amber-500/5">
+            <Clock className="text-amber-600" />
+            <AlertTitle>
+              {pendingRequest.isDelete ? "Delete request pending approval" : "Edit request pending approval"}
+            </AlertTitle>
+            <AlertDescription className="text-muted-foreground">
+              An admin must still review your request. You can cancel it anytime; after that you may submit a new edit or delete
+              request.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {awaitingNewApproval && !pendingRequest && (
+          <Alert className="border-amber-500/40 bg-amber-500/5">
+            <Clock className="text-amber-600" />
+            <AlertTitle>Awaiting admin approval</AlertTitle>
+            <AlertDescription className="text-muted-foreground">
+              This demand is not visible to agencies yet. An admin or super admin must approve it before agencies can submit candidates.
+              You can withdraw it using &quot;Withdraw demand&quot; if you need to cancel.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* ══ demand details preview ══ */}
         {demand && (

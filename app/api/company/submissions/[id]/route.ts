@@ -71,6 +71,8 @@ export async function PATCH(
     }
 
     if (newStatus === 'hired') {
+      await db.candidates.update(app.candidateId, { status: 'placed' })
+
       const demand = await db.demands.getById(app.demandId)
       if (demand) {
         await db.demands.update(app.demandId, {

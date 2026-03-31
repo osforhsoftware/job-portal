@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { demandIsLiveOnMarketplace } from '@/lib/demand-approval'
+import { candidateCanSubmitToDemands } from '@/lib/candidate-demand-eligibility'
 import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
 export async function POST(request: NextRequest) {
@@ -19,10 +21,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Demand not found' }, { status: 404 })
     }
 
+    if (!demandIsLiveOnMarketplace(demand)) {
+      return NextResponse.json(
+        { error: 'This demand is not yet approved or is not available' },
+        { status: 400 }
+      )
+    }
+
     const results = []
     for (const candidateId of candidateIds) {
       const candidate = await db.candidates.getById(candidateId)
       if (!candidate) continue
+
+      if (!candidateCanSubmitToDemands(candidate)) {
+        results.push({
+          candidateId,
+          status: 'unavailable',
+          message:
+            candidate.status === 'placed'
+              ? 'This candidate is already placed (hired) and cannot be submitted to new demands'
+              : 'This candidate is not available for new demand applications',
+        })
+        continue
+      }
 
       if (demand.jobSubCategoryId) {
         await db.candidates.update(candidateId, { jobSubCategoryId: demand.jobSubCategoryId })

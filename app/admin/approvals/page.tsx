@@ -63,6 +63,17 @@ type DemandEditApprovalItem = {
   } | null
 }
 
+type PendingNewDemandItem = {
+  id: string
+  jobTitle: string
+  companyName: string
+  companyId: string
+  location?: string
+  quantity?: number
+  status?: string
+  createdAt: string
+}
+
 function formatValue(v: unknown) {
   if (v === undefined) return "—"
   if (v === null) return "null"
@@ -79,6 +90,7 @@ export default function AdminApprovalsPage() {
   const router = useRouter()
   const [pending, setPending] = useState<PendingItem[]>([])
   const [pendingDemandEdits, setPendingDemandEdits] = useState<DemandEditApprovalItem[]>([])
+  const [pendingNewDemands, setPendingNewDemands] = useState<PendingNewDemandItem[]>([])
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
   const [counts, setCounts] = useState({ agencies: 0, companies: 0 })
@@ -109,6 +121,7 @@ export default function AdminApprovalsPage() {
     setUserRole(userData.role)
     loadPending()
     loadPendingDemandEdits()
+    loadPendingNewDemands()
     loadJobCategories()
     loadJobSubCategories()
   }, [router])
@@ -137,6 +150,18 @@ export default function AdminApprovalsPage() {
       }
     } catch (error) {
       console.error("Failed to load pending demand edits:", error)
+    }
+  }
+
+  const loadPendingNewDemands = async () => {
+    try {
+      const response = await fetch("/api/admin/new-demand-approvals")
+      if (response.ok) {
+        const data = await response.json()
+        setPendingNewDemands(data.pending || [])
+      }
+    } catch (error) {
+      console.error("Failed to load new demand approvals:", error)
     }
   }
 
@@ -217,6 +242,41 @@ export default function AdminApprovalsPage() {
     setConfirmAction(null)
   }
 
+  const handleNewDemandAction = async (action: "approve" | "reject", demandId: string) => {
+    let note: string | undefined
+    if (action === "reject") {
+      const entered = window.prompt("Optional note to the company (reason for rejection):")
+      if (entered === null) return
+      note = entered.trim() || undefined
+    }
+
+    const label =
+      action === "approve" ? "Approve this demand and publish it to agencies?" : "Reject this new demand?"
+    const ok = window.confirm(label)
+    if (!ok) return
+
+    const user = localStorage.getItem("user")
+    const adminUserId = user ? (JSON.parse(user).id ?? undefined) : undefined
+    setActingId(demandId)
+    try {
+      const response = await fetch("/api/admin/new-demand-approvals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, demandId, adminUserId, note: note || undefined }),
+      })
+      if (response.ok) {
+        await loadPendingNewDemands()
+      } else {
+        const data = await response.json()
+        console.error(data.error || "Action failed")
+      }
+    } catch (error) {
+      console.error("New demand action failed:", error)
+    } finally {
+      setActingId(null)
+    }
+  }
+
   const handleDemandEditAction = async (action: "approve" | "reject", requestId: string) => {
     const target = pendingDemandEdits.find((r) => r.id === requestId)
     const isDelete = target && (target.changes as any)?.markForDelete
@@ -276,19 +336,19 @@ export default function AdminApprovalsPage() {
             </div>
             <Badge variant="secondary" className="w-fit text-base px-3 py-1">
               <Clock className="mr-1 h-4 w-4" />
-              {pending.length} pending
+              {pending.length + pendingDemandEdits.length + pendingNewDemands.length} pending
             </Badge>
           </div>
 
           {loading ? (
             <PageLoader />
-          ) : pending.length === 0 && pendingDemandEdits.length === 0 ? (
+          ) : pending.length === 0 && pendingDemandEdits.length === 0 && pendingNewDemands.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                 <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold">No pending approvals</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  All agencies and companies are approved.
+                  All registrations and demands are up to date.
                 </p>
                 <Button asChild variant="outline" className="mt-4">
                   <Link href="/admin/dashboard">Back to Dashboard</Link>
@@ -297,17 +357,20 @@ export default function AdminApprovalsPage() {
             </Card>
           ) : (
             <Tabs defaultValue="all" className="space-y-4">
-              <TabsList className="grid w-full max-w-2xl grid-cols-4">
-                <TabsTrigger value="all">
-                  All ({pending.length + pendingDemandEdits.length})
+              <TabsList className="grid w-full max-w-5xl grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1 h-auto">
+                <TabsTrigger value="all" className="text-xs sm:text-sm">
+                  All ({pending.length + pendingDemandEdits.length + pendingNewDemands.length})
                 </TabsTrigger>
-                <TabsTrigger value="agencies">
+                <TabsTrigger value="agencies" className="text-xs sm:text-sm">
                   Agencies ({counts.agencies})
                 </TabsTrigger>
-                <TabsTrigger value="companies">
+                <TabsTrigger value="companies" className="text-xs sm:text-sm">
                   Companies ({counts.companies})
                 </TabsTrigger>
-                <TabsTrigger value="demand-edits">
+                <TabsTrigger value="new-demands" className="text-xs sm:text-sm">
+                  New demands ({pendingNewDemands.length})
+                </TabsTrigger>
+                <TabsTrigger value="demand-edits" className="text-xs sm:text-sm">
                   Demand edits ({pendingDemandEdits.length})
                 </TabsTrigger>
               </TabsList>
@@ -521,6 +584,70 @@ export default function AdminApprovalsPage() {
                     </CardContent>
                   </Card>
                 )}
+
+                {pendingNewDemands.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>New company demands</CardTitle>
+                      <CardDescription>
+                        Approve to publish to agencies, or reject with an optional note to the company
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Job title</TableHead>
+                            <TableHead>Company</TableHead>
+                            <TableHead>Location</TableHead>
+                            <TableHead>Submitted</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pendingNewDemands.map((d) => (
+                            <TableRow key={d.id}>
+                              <TableCell className="font-medium">{d.jobTitle}</TableCell>
+                              <TableCell>{d.companyName}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">{d.location || "—"}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {new Date(d.createdAt).toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    disabled={actingId === d.id}
+                                    onClick={() => handleNewDemandAction("approve", d.id)}
+                                  >
+                                    {actingId === d.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <Check className="h-4 w-4 mr-1" />
+                                        Approve
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={actingId === d.id}
+                                    onClick={() => handleNewDemandAction("reject", d.id)}
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               <TabsContent value="agencies" className="space-y-4">
@@ -686,6 +813,74 @@ export default function AdminApprovalsPage() {
                                       type: "company",
                                       id: item.id,
                                     })}
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="new-demands" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>New company demands</CardTitle>
+                    <CardDescription>
+                      {pendingNewDemands.length} demand(s) awaiting approval before agencies can see them
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {pendingNewDemands.length === 0 ? (
+                      <p className="py-8 text-center text-muted-foreground">No new demands awaiting approval.</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Job title</TableHead>
+                            <TableHead>Company</TableHead>
+                            <TableHead>Location</TableHead>
+                            <TableHead>Submitted</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pendingNewDemands.map((d) => (
+                            <TableRow key={d.id}>
+                              <TableCell className="font-medium">{d.jobTitle}</TableCell>
+                              <TableCell>{d.companyName}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">{d.location || "—"}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {new Date(d.createdAt).toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    disabled={actingId === d.id}
+                                    onClick={() => handleNewDemandAction("approve", d.id)}
+                                  >
+                                    {actingId === d.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <Check className="h-4 w-4 mr-1" />
+                                        Approve
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={actingId === d.id}
+                                    onClick={() => handleNewDemandAction("reject", d.id)}
                                   >
                                     <X className="h-4 w-4 mr-1" />
                                     Reject

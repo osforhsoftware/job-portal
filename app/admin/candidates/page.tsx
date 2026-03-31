@@ -1,7 +1,7 @@
 "use client"
 
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { AdminNav } from "@/components/admin-nav"
@@ -51,7 +51,7 @@ function DetailRow({
   )
 }
 
-const STATUS_OPTIONS = ["all", "available", "under_bidding", "interviewed", "selected", "on_hold"]
+const STATUS_OPTIONS = ["all", "available", "under_bidding", "interviewed", "selected", "on_hold", "placed"]
 
 const EXPERIENCE_BUCKETS = [
   { label: "Any",      value: "all"  },
@@ -80,6 +80,8 @@ const STATUS_CLASSES: Record<string, string> = {
     "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800",
   on_hold:
     "bg-muted text-muted-foreground border-border",
+  placed:
+    "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -118,6 +120,38 @@ function matchesDate(c: Candidate, range: string): boolean {
   if (range === "30d") return diff <= 30 * day
   if (range === "90d") return diff <= 90 * day
   return true
+}
+
+/** Resolve stored job category / sub-category ids to labels (falls back to raw value for plain-text imports). */
+function buildJobCategoryLabelMap(
+  categories: Array<{ id: string; name: string }>,
+  subCategories: Array<{ id: string; name: string }>
+): Record<string, string> {
+  const map: Record<string, string> = {}
+  for (const c of categories) {
+    if (c?.id) map[c.id] = c.name
+  }
+  for (const s of subCategories) {
+    if (s?.id) map[s.id] = s.name
+  }
+  return map
+}
+
+function formatJobCategoryCell(
+  ids: string[] | undefined,
+  labelById: Record<string, string>
+): { text: string; more: number } {
+  if (!ids?.length) return { text: "—", more: 0 }
+  const labels = ids.map((id) => labelById[id] ?? id)
+  return {
+    text: labels.slice(0, 2).join(", "),
+    more: Math.max(0, labels.length - 2),
+  }
+}
+
+function formatJobCategoryDetail(ids: string[] | undefined, labelById: Record<string, string>): string | undefined {
+  if (!ids?.length) return undefined
+  return ids.map((id) => labelById[id] ?? id).join(", ")
 }
 
 function FilterChip({ label, onRemove }: { label?: string; onRemove: () => void }) {
@@ -161,6 +195,7 @@ export default function CandidatesManagementPage() {
   const [loading, setLoading]       = useState(true)
   const [userRole, setUserRole]     = useState<string | null>(null)
   const [selected, setSelected]     = useState<Candidate | null>(null)
+  const [jobCategoryLabelById, setJobCategoryLabelById] = useState<Record<string, string>>({})
 
   // filter state
   const [search,     setSearch]     = useState("")
@@ -183,12 +218,25 @@ export default function CandidatesManagementPage() {
       .then(d => setCandidates(d.candidates ?? []))
       .catch(console.error)
       .finally(() => setLoading(false))
+
+    Promise.all([
+      fetch("/api/admin/job-categories").then((r) => r.json()),
+      fetch("/api/admin/job-sub-categories").then((r) => r.json()),
+    ])
+      .then(([catRes, subRes]) => {
+        const cats = Array.isArray(catRes?.categories) ? catRes.categories : []
+        const subs = Array.isArray(subRes?.subCategories) ? subRes.subCategories : []
+        setJobCategoryLabelById(buildJobCategoryLabelMap(cats, subs))
+      })
+      .catch(() => {})
   }, [router])
 
   // derived option lists from real data
-  const allCategories = Array.from(
-    new Set(candidates.flatMap(c => c.jobCategories ?? []))
-  ).sort()
+  const allCategories = useMemo(
+    () =>
+      Array.from(new Set(candidates.flatMap((c) => c.jobCategories ?? []))).sort(),
+    [candidates]
+  )
 
   const allLocations = Array.from(
     new Set(candidates.map(c => c.currentLocation).filter(Boolean))
@@ -221,6 +269,7 @@ export default function CandidatesManagementPage() {
     { label: "Available",     value: candidates.filter(c => c.status === "available").length,     cls: "text-emerald-600 dark:text-emerald-400" },
     { label: "Under Bidding", value: candidates.filter(c => c.status === "under_bidding").length, cls: "text-amber-600 dark:text-amber-400" },
     { label: "Selected",      value: candidates.filter(c => c.status === "selected").length,      cls: "text-violet-600 dark:text-violet-400" },
+    { label: "Placed",        value: candidates.filter(c => c.status === "placed").length,        cls: "text-teal-600 dark:text-teal-400" },
   ]
 
   return (
@@ -240,7 +289,7 @@ export default function CandidatesManagementPage() {
           </div>
 
           {/* stats strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {stats.map(s => (
               <div key={s.label} className="bg-card border border-border rounded-xl px-5 py-4 shadow-sm">
                 <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
@@ -320,8 +369,10 @@ export default function CandidatesManagementPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All categories</SelectItem>
-                          {allCategories.map(cat => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          {allCategories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {jobCategoryLabelById[cat] ?? cat}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -397,7 +448,10 @@ export default function CandidatesManagementPage() {
                   <FilterChip label={`Status: ${status.replace(/_/g, " ")}`} onRemove={() => setStatus("all")} />
                 )}
                 {category !== "all" && (
-                  <FilterChip label={`Category: ${category}`} onRemove={() => setCategory("all")} />
+                  <FilterChip
+                    label={`Category: ${jobCategoryLabelById[category] ?? category}`}
+                    onRemove={() => setCategory("all")}
+                  />
                 )}
                 {location !== "all" && (
                   <FilterChip label={`Location: ${location}`} onRemove={() => setLocation("all")} />
@@ -454,7 +508,9 @@ export default function CandidatesManagementPage() {
                       </td>
                     </tr>
                   ) : (
-                    filtered.map(c => (
+                    filtered.map((c) => {
+                      const catCell = formatJobCategoryCell(c.jobCategories, jobCategoryLabelById)
+                      return (
                       <tr
                         key={c.id}
                         onClick={() => setSelected(c)}
@@ -491,12 +547,10 @@ export default function CandidatesManagementPage() {
                             <p className="text-xs text-muted-foreground">{c.nationality}</p>
                           )}
                         </td>
-                        <td className="px-4 py-3.5 text-foreground max-w-[160px]">
-                          {c.jobCategories?.slice(0, 2).join(", ") || "—"}
-                          {(c.jobCategories?.length ?? 0) > 2 && (
-                            <span className="text-xs text-muted-foreground">
-                              {" "}+{c.jobCategories!.length - 2}
-                            </span>
+                        <td className="px-4 py-3.5 text-foreground max-w-[200px]">
+                          {catCell.text}
+                          {catCell.more > 0 && (
+                            <span className="text-xs text-muted-foreground"> +{catCell.more}</span>
                           )}
                         </td>
                         <td className="px-4 py-3.5 text-foreground">
@@ -519,7 +573,8 @@ export default function CandidatesManagementPage() {
                           </button>
                         </td>
                       </tr>
-                    ))
+                      )
+                    })
                   )}
                 </tbody>
               </table>
@@ -629,7 +684,10 @@ export default function CandidatesManagementPage() {
                         <DetailRow label="Expected salary"  value={selected.expectedSalary} />
                         <DetailRow label="Industries"       value={selected.industries?.join(", ")} />
                         <DetailRow label="Job types"        value={selected.jobTypes?.join(", ")} />
-                        <DetailRow label="Categories"       value={selected.jobCategories?.join(", ")} />
+                        <DetailRow
+                          label="Categories"
+                          value={formatJobCategoryDetail(selected.jobCategories, jobCategoryLabelById)}
+                        />
                       </div>
                     </TabsContent>
 

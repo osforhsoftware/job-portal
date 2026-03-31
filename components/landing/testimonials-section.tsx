@@ -6,7 +6,7 @@ const testimonials = [
     role: "HR Director",
     company: "Gulf Construction LLC",
     content:
-      "TalentBid transformed our recruitment process. The bidding system helped us find qualified engineers at competitive rates. Highly recommended for bulk hiring.",
+      "ONEMYJOB transformed our recruitment process. The bidding system helped us find qualified engineers at competitive rates. Highly recommended for bulk hiring.",
     rating: 5,
     avatar: "MA",
   },
@@ -15,7 +15,7 @@ const testimonials = [
     role: "Nurse",
     company: "Placed in Dubai Hospital",
     content:
-      "Creating my profile was so easy with the video intro feature. I received 5 bids within a week and got placed at my dream hospital. Thank you TalentBid!",
+      "Creating my profile was so easy with the video intro feature. I received 5 bids within a week and got placed at my dream hospital. Thank you ONEMYJOB!",
     rating: 5,
     avatar: "PS",
   },
@@ -43,7 +43,7 @@ export function TestimonialsSection() {
             Trusted by Thousands Worldwide
           </h2>
           <p className="text-pretty text-muted-foreground">
-            See how TalentBid is helping candidates, companies, and agencies achieve their goals.
+            See how ONEMYJOB is helping candidates, companies, and agencies achieve their goals.
           </p>
         </div>
 

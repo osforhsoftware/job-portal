@@ -12,7 +12,7 @@ export function CTASection() {
             Ready to Transform Your Recruitment Journey?
           </h2>
           <p className="mx-auto mb-10 max-w-2xl text-pretty text-lg text-background/70">
-            Join thousands of candidates, companies, and agencies already using TalentBid to connect talent with opportunity.
+            Join thousands of candidates, companies, and agencies already using ONEMYJOB to connect talent with opportunity.
           </p>
 
           {/* CTA Buttons */}

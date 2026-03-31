@@ -43,8 +43,31 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    if (demand.approvalStatus === 'pending') {
+      return NextResponse.json(
+        {
+          error:
+            'This demand is still awaiting admin approval. You can withdraw it from the demand page instead of submitting edits.',
+          code: 'DEMAND_PENDING_APPROVAL',
+        },
+        { status: 409 }
+      )
+    }
+
     if (!changes || typeof changes !== 'object') {
       return NextResponse.json({ error: 'changes required' }, { status: 400 })
+    }
+
+    const existingPending = await db.demandEditRequests.getPendingForDemand(demandId, companyId)
+    if (existingPending) {
+      return NextResponse.json(
+        {
+          error:
+            'A pending edit or delete request already exists for this demand. Cancel it from the demand page before submitting a new one.',
+          code: 'PENDING_REQUEST_EXISTS',
+        },
+        { status: 409 }
+      )
     }
 
     const created = await db.demandEditRequests.create({
@@ -129,6 +152,43 @@ export async function DELETE(
     if (!demand) return NextResponse.json({ error: 'Demand not found' }, { status: 404 })
     if (String(demand.companyId) !== String(companyId)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    if (demand.approvalStatus === 'pending') {
+      const removed = await db.demands.delete(demandId)
+      if (!removed) {
+        return NextResponse.json({ error: 'Failed to withdraw demand' }, { status: 500 })
+      }
+      await logActivity({
+        userId: requestedByUserId,
+        userName: requestedByEmployeeName,
+        userType: 'company',
+        entityType: 'demand',
+        entityId: demandId,
+        action: 'delete',
+        description: `Withdrew pending demand "${demand.jobTitle}" before approval`,
+        metadata: { companyId, demandId },
+        status: 'success',
+        ip,
+        userAgent: ua,
+      }).catch(() => {})
+      return NextResponse.json({
+        success: true,
+        message: 'Pending demand withdrawn',
+        withdrawn: true,
+      })
+    }
+
+    const existingPending = await db.demandEditRequests.getPendingForDemand(demandId, companyId)
+    if (existingPending) {
+      return NextResponse.json(
+        {
+          error:
+            'A pending edit or delete request already exists for this demand. Cancel it from the demand page before submitting a new one.',
+          code: 'PENDING_REQUEST_EXISTS',
+        },
+        { status: 409 }
+      )
     }
 
     const created = await db.demandEditRequests.create({

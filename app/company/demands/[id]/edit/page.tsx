@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { PageLoader } from "@/components/page-loader"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   ArrowLeft,
   Save,
@@ -35,6 +36,7 @@ import {
   CalendarDays,
   MoreHorizontal,
   Check,
+  Ban,
 } from "lucide-react"
 import { BenefitType, NationalityType, BENEFITS } from "@/lib/job-config"
 import { ALL_COUNTRIES } from "@/lib/countries"
@@ -202,6 +204,37 @@ export default function CompanyDemandEditRequestPage() {
   const [availableCities, setAvailableCities] = useState<{ name: string }[]>([])
   const [statesLoading, setStatesLoading] = useState(false)
   const [citiesLoading, setCitiesLoading] = useState(false)
+  const [pendingRequest, setPendingRequest] = useState<{
+    id: string
+    requestedAt: string
+    isDelete: boolean
+  } | null>(null)
+  const [cancellingPending, setCancellingPending] = useState(false)
+
+  const hydrateFormFromDemand = useCallback((d: Demand) => {
+    setOriginal(d)
+    setJobTitle(d.jobTitle ?? "")
+    setDescription(d.description ?? "")
+    setQuantity(String(d.quantity ?? 1))
+    setLocation(d.location ?? "")
+    setRequirements((d.requirements || []).join("\n"))
+    setSkills(d.skills || [])
+    setSalaryAmount(String(d.salary?.amount ?? ""))
+    setSalaryCurrency(d.salary?.currency ?? "AED")
+    setDutyHoursPerDay(String(d.dutyHoursPerDay ?? ""))
+    setBreakTimeHours(String(d.breakTimeHours ?? ""))
+    setDayOffPerMonth(String(d.dayOffPerMonth ?? ""))
+    setTimeRemark(d.timeRemark ?? "")
+    setBenefits(d.benefits || [])
+    setOtherBenefitNote(d.otherBenefitNote ?? "")
+    setGender(d.gender ?? "any")
+    setNationality(d.nationality || [])
+    setJoining(d.joining ?? "immediate")
+    setStatus(d.status ?? "open")
+    setDeadline(d.deadline ?? "")
+    setJobCategoryId(d.jobCategoryId || "")
+    setJobSubCategoryId(d.jobSubCategoryId || "")
+  }, [])
 
   useEffect(() => {
     const userRaw = localStorage.getItem("user")
@@ -224,44 +257,35 @@ export default function CompanyDemandEditRequestPage() {
         return
       }
 
-      fetch(`/api/company/demands/${demandId}`)
-        .then((r) => r.json())
-        .then((data) => {
+      Promise.all([
+        fetch(`/api/company/demands/${demandId}`).then((r) => r.json()),
+        fetch(`/api/company/demands/${demandId}/pending-request?companyId=${encodeURIComponent(cid)}`).then((r) => r.json()),
+      ])
+        .then(([data, pendRes]) => {
+          if (pendRes?.success && pendRes.pending) {
+            const p = pendRes.pending as { id: string; requestedAt: string; changes?: { markForDelete?: boolean } }
+            setPendingRequest({
+              id: p.id,
+              requestedAt: p.requestedAt,
+              isDelete: !!p.changes?.markForDelete,
+            })
+          } else {
+            setPendingRequest(null)
+          }
           if (!data?.success || !data?.demand) return
           const d = data.demand as Demand
           if (String(d.companyId) !== String(cid)) {
             router.replace("/company/demands")
             return
           }
-          setOriginal(d)
-          setJobTitle(d.jobTitle ?? "")
-          setDescription(d.description ?? "")
-          setQuantity(String(d.quantity ?? 1))
-          setLocation(d.location ?? "")
-          setRequirements((d.requirements || []).join("\n"))
-          setSkills(d.skills || [])
-          setSalaryAmount(String(d.salary?.amount ?? ""))
-          setSalaryCurrency(d.salary?.currency ?? "AED")
-          setDutyHoursPerDay(String(d.dutyHoursPerDay ?? ""))
-          setBreakTimeHours(String(d.breakTimeHours ?? ""))
-          setDayOffPerMonth(String(d.dayOffPerMonth ?? ""))
-          setTimeRemark(d.timeRemark ?? "")
-          setBenefits(d.benefits || [])
-          setOtherBenefitNote(d.otherBenefitNote ?? "")
-          setGender(d.gender ?? "any")
-          setNationality(d.nationality || [])
-          setJoining(d.joining ?? "immediate")
-          setStatus(d.status ?? "open")
-          setDeadline(d.deadline ?? "")
-          setJobCategoryId(d.jobCategoryId || "")
-          setJobSubCategoryId(d.jobSubCategoryId || "")
+          hydrateFormFromDemand(d)
         })
         .catch(console.error)
         .finally(() => setLoading(false))
     } catch {
       router.replace("/login/company")
     }
-  }, [demandId, router])
+  }, [demandId, router, hydrateFormFromDemand])
 
   useEffect(() => {
     fetch("/api/job-categories")
@@ -412,9 +436,55 @@ export default function CompanyDemandEditRequestPage() {
     jobSubCategoryId,
   ])
 
+  const cancelPendingRequest = async () => {
+    if (!companyId || !demandId || !pendingRequest) return
+    const ok = window.confirm(
+      pendingRequest.isDelete
+        ? "Cancel your pending delete request?"
+        : "Cancel your pending edit or delete request? You can submit a new edit afterward."
+    )
+    if (!ok) return
+    setCancellingPending(true)
+    try {
+      const res = await fetch(`/api/company/demands/${demandId}/pending-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId,
+          requestedByUserId,
+          requestedByEmployeeName,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setPendingRequest(null)
+        const dRes = await fetch(`/api/company/demands/${demandId}`).then((r) => r.json())
+        if (dRes?.success && dRes?.demand) {
+          const d = dRes.demand as Demand
+          if (String(d.companyId) === String(companyId)) {
+            hydrateFormFromDemand(d)
+          }
+        }
+        toast.success(
+          "Request cancelled. The live demand is unchanged; your form was reset to match it (no edits applied)."
+        )
+      } else {
+        toast.error(data.error || "Could not cancel request")
+      }
+    } catch {
+      toast.error("Could not cancel request")
+    } finally {
+      setCancellingPending(false)
+    }
+  }
+
   const submitForApproval = async () => {
     if (!companyId || !demandId) return
     if (!original) return
+    if (pendingRequest) {
+      toast.error("Cancel your pending request first, or wait for admin approval.")
+      return
+    }
     if (!jobTitle.trim()) {
       toast.error("Job title is required")
       return
@@ -443,6 +513,8 @@ export default function CompanyDemandEditRequestPage() {
       if (data?.success) {
         toast.success("Edit request submitted. Waiting for admin approval.")
         router.push(`/company/demands/${demandId}`)
+      } else if (res.status === 409 && data?.code === "PENDING_REQUEST_EXISTS") {
+        toast.error(data?.error || "A pending request already exists.")
       } else {
         toast.error(data?.error || "Failed to submit request")
       }
@@ -472,11 +544,46 @@ export default function CompanyDemandEditRequestPage() {
             <span className="font-semibold">admin/superadmin approval</span>.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1 text-xs text-muted-foreground">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          Approval required
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+          {pendingRequest && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full border-amber-300 text-amber-800 hover:bg-amber-50"
+              disabled={cancellingPending}
+              onClick={cancelPendingRequest}
+            >
+              {cancellingPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Ban className="mr-2 h-4 w-4" />
+              )}
+              Cancel pending request
+            </Button>
+          )}
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1 text-xs text-muted-foreground">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Approval required
+          </div>
         </div>
       </div>
+
+      {pendingRequest && (
+        <div className="mx-auto max-w-5xl">
+          <Alert className="border-amber-500/40 bg-amber-500/5">
+            <Clock className="text-amber-600" />
+            <AlertTitle>
+              {pendingRequest.isDelete
+                ? "A delete request is already waiting for admin approval"
+                : "An edit request is already waiting for admin approval"}
+            </AlertTitle>
+            <AlertDescription className="text-muted-foreground">
+              Cancel it below if you want to change or replace that request. You cannot submit another edit until then.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_320px]">
         <Card className="min-w-0 border-border/70">
@@ -493,11 +600,11 @@ export default function CompanyDemandEditRequestPage() {
                 <Tags className="h-5 w-5" />
                 <Label className="text-base font-medium">Job Category</Label>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-4">
+                <div className="min-w-0 w-full flex-1 basis-0 space-y-2">
                   <Label>Category</Label>
                   <Select value={jobCategoryId} onValueChange={setJobCategoryId}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full min-w-0 max-w-full">
                       <SelectValue placeholder={categoriesLoading ? "Loading…" : "Select category"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -519,14 +626,14 @@ export default function CompanyDemandEditRequestPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 w-full flex-1 basis-0 space-y-2">
                   <Label>Sub-category</Label>
                   <Select
                     value={jobSubCategoryId}
                     onValueChange={setJobSubCategoryId}
                     disabled={!jobCategoryId}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full min-w-0 max-w-full">
                       <SelectValue placeholder={jobCategoryId ? "Select sub-category" : "Select category first"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -538,7 +645,7 @@ export default function CompanyDemandEditRequestPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 w-full shrink-0 space-y-2 md:w-24 md:max-w-[8rem]">
                   <Label htmlFor="quantity">Quantity</Label>
                   <Input
                     id="quantity"
@@ -547,6 +654,7 @@ export default function CompanyDemandEditRequestPage() {
                     inputMode="numeric"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
+                    className="w-full min-w-0"
                   />
                 </div>
               </div>
@@ -557,7 +665,7 @@ export default function CompanyDemandEditRequestPage() {
               <div className="space-y-2">
                 <Label>Location (Country / State / City)</Label>
                 <div className="grid gap-3 md:grid-cols-3">
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1">
                     <Label htmlFor="country-select" className="text-xs text-muted-foreground">
                       Country
                     </Label>
@@ -594,7 +702,7 @@ export default function CompanyDemandEditRequestPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1">
                     <Label htmlFor="state-select" className="text-xs text-muted-foreground">
                       State / Region
                     </Label>
@@ -648,7 +756,7 @@ export default function CompanyDemandEditRequestPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1">
                     <Label htmlFor="city-select" className="text-xs text-muted-foreground">
                       City
                     </Label>
@@ -759,7 +867,7 @@ export default function CompanyDemandEditRequestPage() {
             </section>
 
             {/* Salary */}
-            <section className="grid grid-cols-2 gap-3">
+            <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="salaryAmount">Salary amount</Label>
                 <Input
@@ -783,7 +891,7 @@ export default function CompanyDemandEditRequestPage() {
             </section>
 
             {/* Work schedule */}
-            <section className="grid grid-cols-3 gap-3">
+            <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="dutyHoursPerDay">Duty hrs / day</Label>
                 <Input
@@ -1025,7 +1133,7 @@ export default function CompanyDemandEditRequestPage() {
               <p className="text-xs text-muted-foreground">
                 {Object.keys(changes).length} field(s) changed
               </p>
-              <Button onClick={submitForApproval} disabled={saving}>
+              <Button onClick={submitForApproval} disabled={saving || !!pendingRequest}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Submit for approval
               </Button>

@@ -9,7 +9,6 @@ export const runtime = 'nodejs'
 function profileCompletion(c: Candidate): number {
   const required = [
     c.firstName,
-    c.lastName,
     c.email,
     c.phone,
     c.gender,
