@@ -35,16 +35,18 @@ import {
   User,
   MessageSquare,
   Bell,
+  Shield,
 } from "lucide-react"
 import { DashboardNotificationBell } from "@/components/dashboard-notification-bell"
 import { BrandLogo } from "@/components/brand-logo"
 
 const navigation = [
   { name: "Home", href: "/" },
-  { name: "Find Jobs", href: "/jobs" },
-  { name: "Companies", href: "/companies" },
-  { name: "Agencies", href: "/agencies" },
+  { name: "About Us", href: "/about" },
+  { name: "FAQ", href: "/faq" },
+  { name: "Jobs", href: "/jobs" },
   { name: "How It Works", href: "/how-it-works" },
+  { name: "Contact Us", href: "/contact" },
 ]
 
 const languages = [
@@ -203,9 +205,9 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+      <div className="site-container flex min-h-16 h-[4.25rem] items-center justify-between md:h-[4.5rem]">
         {/* Logo */}
-        <BrandLogo />
+        <BrandLogo size="xl" />
 
         {/* Desktop Navigation */}
         <nav className="hidden items-center gap-1 lg:flex">
@@ -575,6 +577,14 @@ export function Header() {
                       >
                         <Briefcase className="h-5 w-5 shrink-0" />
                         <span className="min-w-0 leading-snug">Agency</span>
+                      </Link>
+                      <Link
+                        href="/admin/login"
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-foreground hover:bg-accent"
+                      >
+                        <Shield className="h-5 w-5 shrink-0" />
+                        <span className="min-w-0 leading-snug">Admin Portal</span>
                       </Link>
                     </div>
 

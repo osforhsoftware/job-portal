@@ -5,7 +5,7 @@ import { ArrowRight, Users, Building2, Briefcase } from "lucide-react"
 export function CTASection() {
   return (
     <section className="bg-foreground py-20 text-background">
-      <div className="container mx-auto px-4">
+      <div className="site-container">
         <div className="mx-auto max-w-4xl text-center">
           {/* Heading */}
           <h2 className="mb-6 text-balance text-3xl font-bold md:text-4xl lg:text-5xl">

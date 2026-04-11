@@ -241,7 +241,7 @@ export default function CompanyDemandsPage() {
                       )}
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {new Date(d.createdAt).toLocaleDateString()}
+                        {new Date(d.createdAt).toLocaleDateString()}|
                       </span>
                     </div>
 

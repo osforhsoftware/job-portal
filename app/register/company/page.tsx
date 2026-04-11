@@ -146,7 +146,7 @@ export default function CompanyRegisterPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1 bg-background py-12">
-        <div className="container mx-auto max-w-2xl px-4">
+        <div className="site-container-xs">
           <Card className="border-border shadow-lg">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">

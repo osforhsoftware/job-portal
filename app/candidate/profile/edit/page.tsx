@@ -203,7 +203,7 @@ export default function CandidateProfileEditPage() {
 
   if (error && !candidateId) {
     return (
-      <div className="container mx-auto max-w-md px-4 py-8">
+      <div className="site-container-mini py-8">
         <p className="text-destructive">{error}</p>
         <Link href="/candidate/dashboard">
           <Button variant="outline" className="mt-4">Back to Dashboard</Button>
@@ -213,7 +213,7 @@ export default function CandidateProfileEditPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="site-container py-8">
       <div className="mx-auto max-w-4xl">
         <Link href="/candidate/dashboard" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />

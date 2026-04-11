@@ -2,9 +2,11 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 const sizes = {
-  sm: "h-8",
-  md: "h-9",
-  lg: "h-10",
+  sm: "h-9",
+  md: "h-10",
+  lg: "h-12",
+  /** Prominent header / hero */
+  xl: "h-14 md:h-16",
 } as const
 
 type BrandLogoProps = {
@@ -14,6 +16,8 @@ type BrandLogoProps = {
   showWordmark?: boolean
   wordmarkClassName?: string
   size?: keyof typeof sizes
+  /** Defaults to home `/`; use e.g. `/agency/dashboard` in app shells. */
+  href?: string
 }
 
 export function BrandLogo({
@@ -22,11 +26,12 @@ export function BrandLogo({
   showWordmark = false,
   wordmarkClassName,
   size = "md",
+  href = "/",
 }: BrandLogoProps) {
   return (
-    <Link href="/" className={cn("inline-flex items-center gap-2", className)}>
+    <Link href={href} className={cn("inline-flex items-center gap-2", className)}>
       <img
-        src="/onemycv.jpeg"
+        src="/one_my_job_icon_1.png"
         alt="ONEMYJOB"
         className={cn("w-auto object-contain object-left", sizes[size], imageClassName)}
       />

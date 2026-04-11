@@ -10,7 +10,7 @@ export default function CandidateRegisterPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1 bg-background">
-        <Suspense fallback={<div className="container mx-auto flex min-h-[400px] items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
+        <Suspense fallback={<div className="site-container flex min-h-[400px] items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
           <CandidateRegistrationWizard />
         </Suspense>
       </main>

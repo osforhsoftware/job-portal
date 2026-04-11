@@ -15,7 +15,7 @@ const stats = [
   },
   {
     icon: Building2,
-    value: "150+",
+    value: "100+",
     label: "Countries Supported",
     description: "Global reach for international recruitment",
   },
@@ -30,7 +30,7 @@ const stats = [
 export function StatsSection() {
   return (
     <section className="border-y border-border bg-card py-16">
-      <div className="container mx-auto px-4">
+      <div className="site-container">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat, index) => (
             <div

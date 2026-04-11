@@ -146,6 +146,28 @@
   }
 }
 
+/* Standard content width — use with header/footer for aligned layouts on wide screens */
+@layer components {
+  .site-container {
+    @apply mx-auto w-full max-w-[1200px] px-4 sm:px-6 lg:px-8;
+  }
+  .site-container-lg {
+    @apply mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8;
+  }
+  .site-container-md {
+    @apply mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8;
+  }
+  .site-container-sm {
+    @apply mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8;
+  }
+  .site-container-xs {
+    @apply mx-auto w-full max-w-2xl px-4 sm:px-6 lg:px-8;
+  }
+  .site-container-mini {
+    @apply mx-auto w-full max-w-md px-4 sm:px-6 lg:px-8;
+  }
+}
+
 /* Page loading animation */
 @keyframes pulse-ring {
   0% { transform: scale(0.5); opacity: 1; }

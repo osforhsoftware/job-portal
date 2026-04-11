@@ -160,7 +160,7 @@ export default function CandidateNotificationsPage() {
 
   if (!loading && !entityId) {
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-8">
+      <div className="site-container-md py-8">
         <CandidateHubNav className="mb-6" />
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
@@ -183,7 +183,7 @@ export default function CandidateNotificationsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <div className="site-container-md py-8">
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
         <p className="text-sm text-muted-foreground">

@@ -26,6 +26,7 @@ import {
   Moon,
 } from "lucide-react"
 import { DashboardNotificationBell } from "@/components/dashboard-notification-bell"
+import { BrandLogo } from "@/components/brand-logo"
 
 const sidebarLinks = [
   { href: "/agency/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -143,18 +144,13 @@ export default function AgencyLayout({ children }: { children: React.ReactNode }
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
         {/* Logo area */}
-        <div className="flex h-16 items-center justify-between border-b border-border px-4">
+        <div className="flex min-h-16 items-center justify-between border-b border-border px-3 py-2">
           {!collapsed && (
-            <Link href="/agency/dashboard" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Building2 className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="text-lg font-bold text-foreground">Agency</span>
-            </Link>
+            <BrandLogo href="/agency/dashboard" size="md" className="min-w-0 flex-1" />
           )}
           {collapsed && (
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Building2 className="h-4 w-4 text-primary-foreground" />
+            <div className="mx-auto flex justify-center">
+              <BrandLogo href="/agency/dashboard" size="sm" showWordmark={false} />
             </div>
           )}
           <Button

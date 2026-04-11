@@ -64,7 +64,7 @@ export default function PricingPage() {
 
       <main className="flex-1">
         <section className="bg-background py-16 md:py-20">
-          <div className="container mx-auto max-w-6xl px-4">
+          <div className="site-container">
             {/* Step pill */}
             <div className="mb-6 flex justify-center">
               <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1 text-xs font-medium text-muted-foreground shadow-sm">

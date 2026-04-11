@@ -24,7 +24,7 @@ export default function CandidateMessagesPage() {
 
   if (loggedIn === null) {
     return (
-      <div className="container mx-auto max-w-5xl px-4 py-8">
+      <div className="site-container-lg py-8">
         <div className="mb-4 h-8 w-48 animate-pulse rounded bg-muted" />
         <div className="mb-6 h-10 w-full max-w-2xl animate-pulse rounded-lg bg-muted" />
         <div className="h-[480px] animate-pulse rounded-xl border bg-muted/30" />
@@ -34,7 +34,7 @@ export default function CandidateMessagesPage() {
 
   if (!loggedIn) {
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-8">
+      <div className="site-container-md py-8">
         <CandidateHubNav className="mb-6" />
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
@@ -57,7 +57,7 @@ export default function CandidateMessagesPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-8">
+    <div className="site-container-lg py-8">
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-foreground">Messages</h1>
         <p className="text-sm text-muted-foreground">

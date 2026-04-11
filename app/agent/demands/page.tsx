@@ -1,14 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import {
-  Search,
   Eye,
   Briefcase,
   MapPin,
@@ -20,10 +18,15 @@ import {
   Table2,
   Calendar,
   ChevronRight,
-  Filter,
   TrendingUp,
 } from "lucide-react"
 import { PageLoader } from "@/components/page-loader"
+import { MarketplaceDemandFilterControls } from "@/components/marketplace-demand-filter-controls"
+import {
+  DEFAULT_MARKETPLACE_FILTERS,
+  filterAndSortMarketplaceDemands,
+  type MarketplaceFilterValues,
+} from "@/lib/marketplace-demand-filters"
 
 interface Demand {
   id: string
@@ -39,6 +42,13 @@ interface Demand {
   filledPositions: number
   status: string
   deadline: string
+  nationality?: string[]
+  jobCategoryId?: string
+  jobSubCategoryId?: string
+  jobCategoryName?: string
+  jobSubCategoryName?: string
+  joining?: string
+  createdAt?: string
 }
 
 type ViewMode = "grid" | "list" | "table"
@@ -553,7 +563,7 @@ function TableView({ demands, onSelect, onClose, selected, detailOpen }: {
 export default function AgentDemandsPage() {
   const [demands, setDemands] = useState<Demand[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState("")
+  const [filters, setFilters] = useState<MarketplaceFilterValues>(DEFAULT_MARKETPLACE_FILTERS)
   const [selectedDemand, setSelectedDemand] = useState<Demand | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("grid")
@@ -568,12 +578,18 @@ export default function AgentDemandsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const openDemands = demands.filter((d) => d.status === "open")
-  const filtered = openDemands.filter(
-    (d) =>
-      d.jobTitle.toLowerCase().includes(search.toLowerCase()) ||
-      d.companyName.toLowerCase().includes(search.toLowerCase()) ||
-      (d.location && d.location.toLowerCase().includes(search.toLowerCase()))
+  const openDemands = useMemo(
+    () => demands.filter((d) => d.status === "open"),
+    [demands],
+  )
+
+  const setFiltersStable = useCallback((next: MarketplaceFilterValues) => {
+    setFilters(next)
+  }, [])
+
+  const filtered = useMemo(
+    () => filterAndSortMarketplaceDemands(openDemands, filters),
+    [openDemands, filters],
   )
 
   const handleSelect = (d: Demand) => {
@@ -632,46 +648,40 @@ export default function AgentDemandsPage() {
         ))}
       </div>
 
-      {/* ── Toolbar ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Search */}
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search by title, company, location..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9"
+      {/* ── Filters + view ── */}
+      <Card className="border-border/60">
+        <CardContent className="pt-4 pb-4 space-y-4">
+          <MarketplaceDemandFilterControls
+            filters={filters}
+            onFiltersChange={setFiltersStable}
+            totalCount={openDemands.length}
+            filteredCount={filtered.length}
           />
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Result count */}
-          <span className="text-sm text-muted-foreground hidden sm:block">
-            {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-          </span>
-
-          {/* View Toggle */}
-          <div className="flex items-center rounded-lg border border-border/60 p-1 gap-0.5 bg-muted/30">
-            {([
-              { mode: "grid" as ViewMode, icon: LayoutGrid, label: "Grid" },
-              { mode: "list" as ViewMode, icon: List, label: "List" },
-              { mode: "table" as ViewMode, icon: Table2, label: "Table" },
-            ]).map(({ mode, icon: Icon, label }) => (
-              <Button
-                key={mode}
-                variant={viewMode === mode ? "default" : "ghost"}
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => setViewMode(mode)}
-                title={label}
-              >
-                <Icon className="h-3.5 w-3.5" />
-              </Button>
-            ))}
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/60 pt-3">
+            <span className="text-xs text-muted-foreground mr-auto hidden sm:inline">
+              Showing open demands only · country matches location or nationalities
+            </span>
+            <div className="flex items-center rounded-lg border border-border/60 p-1 gap-0.5 bg-muted/30">
+              {([
+                { mode: "grid" as ViewMode, icon: LayoutGrid, label: "Grid" },
+                { mode: "list" as ViewMode, icon: List, label: "List" },
+                { mode: "table" as ViewMode, icon: Table2, label: "Table" },
+              ]).map(({ mode, icon: Icon, label }) => (
+                <Button
+                  key={mode}
+                  variant={viewMode === mode ? "default" : "ghost"}
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => setViewMode(mode)}
+                  title={label}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </Button>
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* ── Empty State ── */}
       {filtered.length === 0 ? (
@@ -682,13 +692,16 @@ export default function AgentDemandsPage() {
             </div>
             <p className="text-base font-medium">No open demands found</p>
             <p className="text-sm text-muted-foreground mt-1">
-              {search ? "Try a different search term" : "Check back later for new roles"}
+              Adjust filters or check back later for new roles
             </p>
-            {search && (
-              <Button variant="outline" size="sm" className="mt-4" onClick={() => setSearch("")}>
-                Clear search
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => setFilters(DEFAULT_MARKETPLACE_FILTERS)}
+            >
+              Reset filters
+            </Button>
           </CardContent>
         </Card>
       ) : (

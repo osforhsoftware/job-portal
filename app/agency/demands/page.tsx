@@ -1,23 +1,27 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  Search, Eye, Send, Briefcase, MapPin, DollarSign, Users,
+  Eye, Send, Briefcase, MapPin, DollarSign, Users,
   Loader2, Building2, LayoutGrid, LayoutList, Table2,
   Calendar, ChevronRight, TrendingUp, Clock, UserCheck,
 } from "lucide-react"
 import { toast } from "sonner"
 import { PageLoader } from "@/components/page-loader"
+import { MarketplaceDemandFilterControls } from "@/components/marketplace-demand-filter-controls"
 import { cn } from "@/lib/utils"
+import {
+  DEFAULT_MARKETPLACE_FILTERS,
+  filterAndSortMarketplaceDemands,
+  type MarketplaceFilterValues,
+} from "@/lib/marketplace-demand-filters"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +41,13 @@ interface Demand {
   filledPositions: number
   status: string
   deadline: string
+  nationality?: string[]
+  jobCategoryId?: string
+  jobSubCategoryId?: string
+  jobCategoryName?: string
+  jobSubCategoryName?: string
+  joining?: string
+  createdAt?: string
 }
 
 interface Candidate {
@@ -470,8 +481,7 @@ export default function DemandsPage() {
   const [demands, setDemands]     = useState<Demand[]>([])
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [loading, setLoading]     = useState(true)
-  const [search, setSearch]       = useState("")
-  const [genderFilter, setGenderFilter] = useState("all")
+  const [filters, setFilters] = useState<MarketplaceFilterValues>(DEFAULT_MARKETPLACE_FILTERS)
   const [viewMode, setViewMode]   = useState<ViewMode>("grid")
   const [agencyId, setAgencyId]   = useState("")
 
@@ -499,18 +509,14 @@ export default function DemandsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const filtered = demands.filter(d => {
-    const q = search.toLowerCase()
-    const matchSearch =
-      d.jobTitle.toLowerCase().includes(q) ||
-      d.companyName.toLowerCase().includes(q) ||
-      d.location.toLowerCase().includes(q)
-    const matchGender =
-      genderFilter === "all" ||
-      d.gender.toLowerCase() === genderFilter.toLowerCase() ||
-      d.gender === "any"
-    return matchSearch && matchGender
-  })
+  const setFiltersStable = useCallback((next: MarketplaceFilterValues) => {
+    setFilters(next)
+  }, [])
+
+  const filtered = useMemo(
+    () => filterAndSortMarketplaceDemands(demands, filters),
+    [demands, filters],
+  )
 
   const openCount      = demands.filter(d => d.status === "open").length
   const totalPositions = demands.reduce((a, d) => a + (d.positions ?? 0), 0)
@@ -573,30 +579,19 @@ export default function DemandsPage() {
         </div>
         {/* Filters + view toggle */}
         <Card className="shadow-none">
-          <CardContent className="py-3 px-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                <Input
-                  placeholder="Search title, company, location…"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="pl-9 h-9"
-                />
-              </div>
-              <Select value={genderFilter} onValueChange={setGenderFilter}>
-                <SelectTrigger className="w-[150px] h-9">
-                  <SelectValue placeholder="Gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Genders</SelectItem>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="any">Any</SelectItem>
-                </SelectContent>
-              </Select>
+          <CardContent className="py-4 px-4 space-y-4">
+            <MarketplaceDemandFilterControls
+              filters={filters}
+              onFiltersChange={setFiltersStable}
+              totalCount={demands.length}
+              filteredCount={filtered.length}
+            />
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border/60 pt-3">
+              <span className="text-xs text-muted-foreground mr-auto hidden sm:inline">
+                Country matches location text or accepted nationalities
+              </span>
               {/* View toggle */}
-              <div className="ml-auto flex items-center gap-0.5 rounded-lg border bg-muted/40 p-1">
+              <div className="flex items-center gap-0.5 rounded-lg border bg-muted/40 p-1">
                 {([
                   { mode: "grid"  as ViewMode, Icon: LayoutGrid,  label: "Grid"  },
                   { mode: "float" as ViewMode, Icon: LayoutList,  label: "List"  },

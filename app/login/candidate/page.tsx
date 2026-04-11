@@ -80,7 +80,7 @@ export default function CandidateLoginPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex flex-1 items-center justify-center bg-background px-4 py-12">
+      <main className="site-container flex flex-1 items-center justify-center bg-background py-12">
         <div className="w-full max-w-md">
           <Card className="border-border shadow-lg">
             <CardHeader className="text-center">

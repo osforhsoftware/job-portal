@@ -249,7 +249,7 @@ export function CandidateRegistrationWizard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="site-container py-8">
       {/* Progress Header */}
       <div className="mx-auto mb-8 max-w-4xl">
         <h1 className="mb-2 text-center text-3xl font-bold text-foreground">

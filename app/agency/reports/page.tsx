@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useTheme } from "next-themes"
 import {
   PieChart,
   Pie,
@@ -17,8 +16,10 @@ import {
   CartesianGrid,
 } from "recharts"
 import { BarChart3, TrendingUp, Users, DollarSign, Award, Target } from "lucide-react"
-import { motion } from "framer-motion"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { PageLoader } from "@/components/page-loader"
+import { cn } from "@/lib/utils"
 
 interface Report {
   totalApplications: number
@@ -32,59 +33,57 @@ interface Report {
 const PALETTE = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#f97316"]
 const RADIAN = Math.PI / 180
 
-// ── Custom Donut Label ──────────────────────────────────────────
-const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+function renderPieLabel({
+  cx, cy, midAngle, innerRadius, outerRadius, percent,
+}: {
+  cx: number
+  cy: number
+  midAngle: number
+  innerRadius: number
+  outerRadius: number
+  percent: number
+}) {
   if (percent < 0.06) return null
   const r = innerRadius + (outerRadius - innerRadius) * 0.55
   const x = cx + r * Math.cos(-midAngle * RADIAN)
   const y = cy + r * Math.sin(-midAngle * RADIAN)
   return (
-    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central"
-      fontSize={10} fontWeight={700}>
+    <text
+      x={x}
+      y={y}
+      className="fill-white"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={10}
+      fontWeight={700}
+    >
       {`${(percent * 100).toFixed(0)}%`}
     </text>
   )
 }
 
-// ── Custom Tooltip ────────────────────────────────────────────────
-const CustomTooltip = ({ active, payload, label, isDark }: any) => {
+function ChartTooltip({ active, payload, label }: {
+  active?: boolean
+  payload?: Array<{ name?: string; value?: number; color?: string }>
+  label?: string
+}) {
   if (!active || !payload?.length) return null
-  const bg = isDark ? "rgba(15,15,25,0.95)" : "rgba(255,255,255,0.96)"
-  const border = isDark ? "rgba(255,255,255,0.1)" : "rgba(148,163,184,0.4)"
-  const labelColor = isDark ? "rgba(255,255,255,0.4)" : "rgba(71,85,105,0.9)"
-  const nameColor = isDark ? "rgba(255,255,255,0.6)" : "rgba(55,65,81,0.9)"
-  const valueColor = isDark ? "white" : "#0f172a"
-
   return (
-    <div style={{
-      background: bg,
-      border: `1px solid ${border}`,
-      borderRadius: 12,
-      padding: "10px 14px",
-      backdropFilter: "blur(20px)",
-      boxShadow: isDark
-        ? "0 18px 45px rgba(15,23,42,0.75)"
-        : "0 18px 45px rgba(148,163,184,0.55)",
-    }}>
-      {label && <p style={{ color: labelColor, fontSize: 11, marginBottom: 6 }}>{label}</p>}
-      {payload.map((entry: any, i: number) => (
-        <div
-          key={i}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 13,
-            fontWeight: 600,
-            color: valueColor,
-          }}
-        >
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: entry.color, flexShrink: 0 }} />
-          <span style={{ color: nameColor, textTransform: "capitalize" }}>{entry.name}:</span>
+    <div className="rounded-lg border border-border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-md">
+      {label != null && label !== "" && (
+        <p className="mb-1 text-xs text-muted-foreground">{label}</p>
+      )}
+      {payload.map((entry, i) => (
+        <div key={i} className="flex items-center gap-2 font-medium">
+          <span
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ background: entry.color }}
+          />
+          <span className="capitalize text-muted-foreground">{entry.name}:</span>
           <span>
             {entry.name?.toLowerCase().includes("earn") || entry.name?.toLowerCase().includes("rev")
-              ? `$${entry.value.toLocaleString()}`
-              : entry.value.toLocaleString()}
+              ? `$${Number(entry.value).toLocaleString()}`
+              : Number(entry.value).toLocaleString()}
           </span>
         </div>
       ))}
@@ -92,133 +91,87 @@ const CustomTooltip = ({ active, payload, label, isDark }: any) => {
   )
 }
 
-// ── Circular Stat Widget ─────────────────────────────────────────
-function CircleStat({ value, max, label, sub, color, icon: Icon, prefix = "", delay = 0 }: {
-  value: number; max: number; label: string; sub: string; color: string; icon: any; prefix?: string; delay?: number
+function KpiCard({
+  icon: Icon,
+  label,
+  sub,
+  value,
+  prefix = "",
+  iconClass,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  sub: string
+  value: string | number
+  prefix?: string
+  iconClass: string
 }) {
-  const pct = Math.min((value / (max || 1)) * 100, 100)
-  const radialData = [{ value: pct, fill: color }]
-
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay, duration: 0.4 }}
-      className="relative flex flex-col items-center"
-      style={{
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 20,
-        padding: "24px 16px 20px",
-        backdropFilter: "blur(20px)",
-      }}
-    >
-      {/* glow */}
-      <div style={{
-        position: "absolute", inset: 0, borderRadius: 20, pointerEvents: "none",
-        background: `radial-gradient(circle at 50% 0%, ${color}18 0%, transparent 65%)`,
-      }} />
-
-      <div style={{ position: "relative", width: 120, height: 120 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <RadialBarChart
-            cx="50%" cy="50%"
-            innerRadius="70%" outerRadius="100%"
-            startAngle={90} endAngle={-270}
-            data={radialData}
-          >
-            <RadialBar
-              background={{ fill: "rgba(255,255,255,0.06)" }}
-              cornerRadius={8}
-              dataKey="value"
-              isAnimationActive
-              animationDuration={1200}
-              animationEasing="ease-out"
-            />
-          </RadialBarChart>
-        </ResponsiveContainer>
-
-        {/* center content */}
-        <div style={{
-          position: "absolute", inset: 0,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-        }}>
-          <div style={{
-            background: `${color}22`, borderRadius: "50%", padding: 6, marginBottom: 2,
-          }}>
-            <Icon style={{ width: 14, height: 14, color }} />
+    <Card>
+      <CardContent className="pt-6">
+        <div className="mb-3 flex items-start justify-between">
+          <div className={cn("rounded-xl p-2.5", iconClass)}>
+            <Icon className="h-5 w-5" />
           </div>
-          <span style={{ fontSize: 18, fontWeight: 800, color: "white", lineHeight: 1 }}>
-            {prefix}{typeof value === "number" && value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value}
-          </span>
         </div>
-      </div>
-
-      <p style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", marginTop: 10, textAlign: "center" }}>{label}</p>
-      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2, textAlign: "center" }}>{sub}</p>
-    </motion.div>
+        <p className="text-2xl font-bold tabular-nums text-foreground">
+          {prefix}
+          {value}
+        </p>
+        <p className="mt-1 text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{sub}</p>
+      </CardContent>
+    </Card>
   )
 }
 
 export default function ReportsPage() {
   const [report, setReport] = useState<Report | null>(null)
   const [loading, setLoading] = useState(true)
-  const { theme } = useTheme()
-
-  const isDark = theme === "dark"
-
-  const pageBg = isDark
-    ? "linear-gradient(135deg, #080810 0%, #0d0820 50%, #080d18 100%)"
-    : "linear-gradient(135deg, #ecf1fc 0%, #f4f6fb 50%, #dbeafe 100%)"
-
-  const cardBg = isDark ? "rgba(255,255,255,0.045)" : "rgba(236,242,255,0.85)"
-  const cardBorder = isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(199,210,254,0.8)"
-  const headingColor = isDark ? "white" : "#0f172a"
-  const subHeadingColor = isDark ? "rgba(255,255,255,0.6)" : "rgba(71,85,105,0.9)"
-  const emptyStateColor = isDark ? "rgba(255,255,255,0.3)" : "rgba(148,163,184,0.9)"
 
   useEffect(() => {
     const user = localStorage.getItem("user")
     if (!user) return
     const { agencyId } = JSON.parse(user)
     fetch(`/api/agency/commission/report?agencyId=${agencyId}`)
-      .then(r => r.json())
-      .then(data => { if (data.success) setReport(data.report) })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setReport(data.report)
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <PageLoader />
+  if (loading) {
+    return <PageLoader message="Loading reports..." />
+  }
 
   if (!report) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "80px 16px",
-          background: pageBg,
-          fontFamily: "'Sora', 'Outfit', system-ui, sans-serif",
-        }}
-      >
-        <BarChart3 style={{ width: 48, height: 48, color: emptyStateColor, marginBottom: 16 }} />
-        <p style={{ color: emptyStateColor, fontSize: 16 }}>No report data available</p>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports & Analytics</h1>
+          <p className="text-sm text-muted-foreground">Performance metrics and visual analytics</p>
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <BarChart3 className="mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="text-muted-foreground">No report data available</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
-  const successRate = report.totalApplications > 0
-    ? parseFloat(((report.totalPlacements / report.totalApplications) * 100).toFixed(1))
-    : 0
+  const successRate =
+    report.totalApplications > 0
+      ? parseFloat(((report.totalPlacements / report.totalApplications) * 100).toFixed(1))
+      : 0
 
   const pieData = report.agentPerformance
-    .filter(a => a.totalSubmissions > 0)
-    .map(a => ({ name: a.name, value: a.totalSubmissions }))
+    .filter((a) => a.totalSubmissions > 0)
+    .map((a) => ({ name: a.name, value: a.totalSubmissions }))
 
-  // Agent performance as radial bars
   const agentRadial = report.agentPerformance.slice(0, 6).map((a, i) => ({
     name: a.name.split(" ")[0],
     submissions: a.totalSubmissions,
@@ -226,90 +179,64 @@ export default function ReportsPage() {
     fill: PALETTE[i % PALETTE.length],
   }))
 
-  const maxSub = Math.max(...agentRadial.map(a => a.submissions), 1)
+  const maxSub = Math.max(...agentRadial.map((a) => a.submissions), 1)
+
+  const fmtK = (n: number) =>
+    typeof n === "number" && n >= 1000 ? `${(n / 1000).toFixed(1)}k` : n
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: pageBg,
-        padding: "24px 16px",
-        fontFamily: "'Sora', 'Outfit', system-ui, sans-serif",
-        transition: "background .2s ease",
-      }}
-    >
-      {/* Ambient orbs */}
-      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0 }}>
-        <div
-          style={{
-            position: "absolute",
-            top: "-15%",
-            left: "-8%",
-            width: 600,
-            height: 600,
-            borderRadius: "50%",
-            background: isDark
-              ? "radial-gradient(circle, rgba(99,102,241,0.07), transparent 70%)"
-              : "radial-gradient(circle, rgba(129,140,248,0.16), transparent 70%)",
-          }}
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports & Analytics</h1>
+        <p className="text-sm text-muted-foreground">Performance metrics and visual analytics</p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          icon={Users}
+          label="Total Submissions"
+          sub="All time"
+          value={fmtK(report.totalApplications)}
+          iconClass="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
         />
-        <div
-          style={{
-            position: "absolute",
-            bottom: "-10%",
-            right: "-5%",
-            width: 500,
-            height: 500,
-            borderRadius: "50%",
-            background: isDark
-              ? "radial-gradient(circle, rgba(139,92,246,0.06), transparent 70%)"
-              : "radial-gradient(circle, rgba(45,212,191,0.12), transparent 70%)",
-          }}
+        <KpiCard
+          icon={Award}
+          label="Placements"
+          sub="Successful hires"
+          value={fmtK(report.totalPlacements)}
+          iconClass="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+        />
+        <KpiCard
+          icon={Target}
+          label="Success Rate"
+          sub="Placement ratio"
+          value={`${successRate}%`}
+          iconClass="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+        />
+        <KpiCard
+          icon={DollarSign}
+          label="Total Revenue"
+          sub="Commission earned"
+          value={fmtK(report.totalEarnings)}
+          prefix="$"
+          iconClass="bg-pink-500/10 text-pink-600 dark:text-pink-400"
         />
       </div>
 
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 1200, margin: "0 auto" }}>
-
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: headingColor, margin: 0, letterSpacing: "-0.5px" }}>
-            Reports & Analytics
-          </h1>
-          <p style={{ fontSize: 13, color: subHeadingColor, marginTop: 4 }}>
-            Performance metrics and visual analytics
-          </p>
-        </motion.div>
-
-        {/* ── Row 1: 4 Circle Stats ─────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 20 }}>
-          <CircleStat value={report.totalApplications} max={report.totalApplications * 1.5} label="Total Submissions" sub="All time" color="#6366f1" icon={Users} delay={0} />
-          <CircleStat value={report.totalPlacements} max={report.totalApplications} label="Placements" sub="Successful hires" color="#10b981" icon={Award} delay={0.08} />
-          <CircleStat value={successRate} max={100} label="Success Rate" sub="Placement ratio" color="#f59e0b" icon={Target} prefix="" delay={0.16} />
-          <CircleStat value={report.totalEarnings} max={report.totalEarnings * 1.5} label="Total Revenue" sub="Commission earned" color="#ec4899" icon={DollarSign} prefix="$" delay={0.24} />
-        </div>
-
-        {/* ── Row 2: Agents + Agent Donut ───────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-
-          {/* Agent Distribution Donut */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            style={{
-              background: cardBg,
-              border: cardBorder,
-              borderRadius: 20,
-              padding: 24,
-              backdropFilter: "blur(20px)",
-            }}
-          >
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: headingColor, margin: "0 0 4px" }}>Agent Distribution</h3>
-            <p style={{ fontSize: 12, color: subHeadingColor, margin: "0 0 16px" }}>Submission share by agent</p>
-
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Agent Distribution</CardTitle>
+            <CardDescription>Submission share by agent</CardDescription>
+          </CardHeader>
+          <CardContent>
             {pieData.length === 0 ? (
-                <div style={{ height: 240, display: "flex", alignItems: "center", justifyContent: "center", color: emptyStateColor }}>No data yet</div>
+              <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">
+                No data yet
+              </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ width: 180, height: 200, flexShrink: 0, position: "relative" }}>
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+                <div className="relative h-[200px] w-full max-w-[180px] shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <defs>
@@ -321,199 +248,188 @@ export default function ReportsPage() {
                         ))}
                       </defs>
                       <Pie
-                        data={pieData} cx="50%" cy="50%"
-                        innerRadius={52} outerRadius={85}
-                        paddingAngle={3} dataKey="value"
-                        labelLine={false} label={renderPieLabel}
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={52}
+                        outerRadius={85}
+                        paddingAngle={3}
+                        dataKey="value"
+                        labelLine={false}
+                        label={renderPieLabel}
                         stroke="none"
-                        isAnimationActive animationDuration={1000}
                       >
                         {pieData.map((_, i) => (
-                          <Cell key={i} fill={`url(#rg-${i % PALETTE.length})`}
-                            style={{ filter: "drop-shadow(0 2px 6px rgba(99,102,241,0.3))" }}
+                          <Cell
+                            key={i}
+                            fill={`url(#rg-${i % PALETTE.length})`}
+                            style={{ filter: "drop-shadow(0 2px 6px rgba(99,102,241,0.25))" }}
                           />
                         ))}
                       </Pie>
-                      <Tooltip content={<CustomTooltip isDark={isDark} />} />
+                      <Tooltip content={<ChartTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
-                  {/* center */}
-                  <div style={{
-                    position: "absolute", inset: 0,
-                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <span style={{ fontSize: 20, fontWeight: 800, color: "white" }}>{report.totalApplications}</span>
-                    <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>Total</span>
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl font-bold text-foreground">{report.totalApplications}</span>
+                    <span className="text-[10px] text-muted-foreground">Total</span>
                   </div>
                 </div>
-
-                {/* Legend */}
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="flex w-full min-w-0 flex-1 flex-col gap-2">
                   {pieData.slice(0, 6).map((entry, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: PALETTE[i % PALETTE.length], flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: subHeadingColor, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.name}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: headingColor }}>{entry.value}</span>
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: PALETTE[i % PALETTE.length] }}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-muted-foreground">{entry.name}</span>
+                      <span className="font-semibold text-foreground">{entry.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-          </motion.div>
+          </CardContent>
+        </Card>
 
-          {/* Agent Performance Radial */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}
-            style={{
-              background: cardBg,
-              border: cardBorder,
-              borderRadius: 20,
-              padding: 24,
-              backdropFilter: "blur(20px)",
-            }}
-          >
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: headingColor, margin: "0 0 4px" }}>Agent Performance</h3>
-            <p style={{ fontSize: 12, color: subHeadingColor, margin: "0 0 16px" }}>Submissions per agent (radial)</p>
-
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Agent Performance</CardTitle>
+            <CardDescription>Submissions per agent (relative scale)</CardDescription>
+          </CardHeader>
+          <CardContent>
             {agentRadial.length === 0 ? (
-              <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: emptyStateColor }}>No data</div>
-            ) : (
-              <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadialBarChart
-                    cx="50%" cy="50%"
-                    innerRadius="20%" outerRadius="90%"
-                    startAngle={90} endAngle={-270}
-                    data={agentRadial.map(a => ({
-                      ...a,
-                      uv: Math.round((a.submissions / maxSub) * 100),
-                    }))}
-                  >
-                    <RadialBar
-                      background={{ fill: "rgba(255,255,255,0.04)" }}
-                      cornerRadius={6}
-                      dataKey="uv"
-                      isAnimationActive
-                      animationDuration={1200}
-                    />
-                    <Tooltip content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null
-                      const d = payload[0]?.payload
-                      const bg = isDark ? "rgba(15,15,25,0.95)" : "rgba(255,255,255,0.96)"
-                      const border = isDark ? "rgba(255,255,255,0.1)" : "rgba(148,163,184,0.4)"
-                      const titleColor = isDark ? "white" : "#111827"
-                      const bodyColor = isDark ? "rgba(255,255,255,0.7)" : "#4b5563"
-                      const placementsColor = isDark ? "#10b981" : "#16a34a"
-                      return (
-                        <div
-                          style={{
-                            background: bg,
-                            border: `1px solid ${border}`,
-                            borderRadius: 10,
-                            padding: "8px 12px",
-                            boxShadow: isDark
-                              ? "0 18px 45px rgba(15,23,42,0.75)"
-                              : "0 18px 45px rgba(148,163,184,0.55)",
-                          }}
-                        >
-                          <p style={{ color: titleColor, fontWeight: 700, fontSize: 13, margin: 0 }}>{d?.name}</p>
-                          <p style={{ color: bodyColor, fontSize: 12, margin: "2px 0 0" }}>Submissions: {d?.submissions}</p>
-                          <p style={{ color: placementsColor, fontSize: 12, margin: "2px 0 0" }}>Placements: {d?.placements}</p>
-                        </div>
-                      )
-                    }} />
-                  </RadialBarChart>
-                </ResponsiveContainer>
+              <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+                No data
               </div>
-            )}
-
-            {/* mini legend */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 12px", marginTop: 8 }}>
-              {agentRadial.map((a, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: a.fill }} />
-                  <span style={{ fontSize: 11, color: subHeadingColor }}>{a.name}</span>
+            ) : (
+              <>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadialBarChart
+                      cx="50%"
+                      cy="50%"
+                      innerRadius="20%"
+                      outerRadius="90%"
+                      startAngle={90}
+                      endAngle={-270}
+                      data={agentRadial.map((a) => ({
+                        ...a,
+                        uv: Math.round((a.submissions / maxSub) * 100),
+                      }))}
+                    >
+                      <RadialBar
+                        background={{ fill: "var(--muted)" }}
+                        cornerRadius={6}
+                        dataKey="uv"
+                      />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null
+                          const d = payload[0]?.payload as {
+                            name?: string
+                            submissions?: number
+                            placements?: number
+                          }
+                          return (
+                            <div className="rounded-lg border border-border bg-popover px-3 py-2 text-sm shadow-md">
+                              <p className="font-semibold text-popover-foreground">{d?.name}</p>
+                              <p className="text-muted-foreground">
+                                Submissions: {d?.submissions ?? 0}
+                              </p>
+                              <p className="text-emerald-600 dark:text-emerald-400">
+                                Placements: {d?.placements ?? 0}
+                              </p>
+                            </div>
+                          )
+                        }}
+                      />
+                    </RadialBarChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-
-        {/* ── Row 3: Revenue Area Chart ─────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.46 }}
-          style={{
-            background: cardBg,
-            border: cardBorder,
-            borderRadius: 20,
-            padding: 24,
-            backdropFilter: "blur(20px)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: headingColor, margin: 0 }}>Revenue Trend</h3>
-              <p style={{ fontSize: 12, color: subHeadingColor, marginTop: 4 }}>Monthly earnings performance</p>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                background: isDark ? "rgba(16,185,129,0.12)" : "rgba(34,197,94,0.14)",
-                borderRadius: 20,
-                padding: "4px 12px",
-              }}
-            >
-              <TrendingUp style={{ width: 13, height: 13, color: "#10b981" }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#10b981" }}>Revenue</span>
-            </div>
-          </div>
-
-          {report.monthlyBreakdown.length === 0 ? (
-            <div style={{ height: 240, display: "flex", alignItems: "center", justifyContent: "center", color: emptyStateColor }}>No monthly data</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={report.monthlyBreakdown} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <defs>
-                  <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="placementsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(148,163,184,0.35)"}
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 11, fill: isDark ? "rgba(255,255,255,0.3)" : "rgba(71,85,105,0.9)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: isDark ? "rgba(255,255,255,0.3)" : "rgba(71,85,105,0.9)" }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={v => `$${v >= 1000 ? `${v / 1000}k` : v}`} />
-                <Tooltip content={<CustomTooltip isDark={isDark} />} />
-                <Area type="monotone" dataKey="earnings" stroke="#10b981" strokeWidth={2.5}
-                  fill="url(#earningsGrad)" name="Revenue" dot={false}
-                  activeDot={{ r: 5, fill: "#10b981", strokeWidth: 0 }} />
-                <Area type="monotone" dataKey="placements" stroke="#6366f1" strokeWidth={2}
-                  fill="url(#placementsGrad)" name="Placements" dot={false}
-                  activeDot={{ r: 5, fill: "#6366f1", strokeWidth: 0 }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </motion.div>
-
+                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5">
+                  {agentRadial.map((a, i) => (
+                    <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className="h-2 w-2 rounded-full" style={{ background: a.fill }} />
+                      {a.name}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0">
+          <div>
+            <CardTitle className="text-base">Revenue Trend</CardTitle>
+            <CardDescription>Monthly earnings and placements</CardDescription>
+          </div>
+          <Badge variant="secondary" className="gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400">
+            <TrendingUp className="h-3.5 w-3.5" />
+            Revenue
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          {report.monthlyBreakdown.length === 0 ? (
+            <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">
+              No monthly data
+            </div>
+          ) : (
+            <div className="h-[240px] w-full [&_.recharts-cartesian-grid_line]:stroke-border [&_.recharts-text]:fill-muted-foreground">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={report.monthlyBreakdown} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="placementsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="var(--border)"
+                    vertical={false}
+                  />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => `$${v >= 1000 ? `${v / 1000}k` : v}`}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="earnings"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    fill="url(#earningsGrad)"
+                    name="Revenue"
+                    dot={false}
+                    activeDot={{ r: 5, fill: "#10b981", strokeWidth: 0 }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="placements"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    fill="url(#placementsGrad)"
+                    name="Placements"
+                    dot={false}
+                    activeDot={{ r: 5, fill: "#6366f1", strokeWidth: 0 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

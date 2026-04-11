@@ -542,7 +542,7 @@ export default function AgenciesManagementPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1 bg-background p-4 md:p-8">
-        <div className="container mx-auto max-w-7xl">
+        <div className="site-container">
           <AdminNav role={userRole ?? undefined} />
 
           <div className="mb-8 flex items-center justify-between">

@@ -145,8 +145,8 @@ export default function CandidateDashboard() {
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-card transition-transform lg:static lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <BrandLogo showWordmark />
+        <div className="flex min-h-16 items-center gap-2 border-b border-border px-6 py-2">
+          <BrandLogo showWordmark size="lg" href="/candidate/dashboard" />
         </div>
 
         <nav className="flex flex-col gap-1 p-4">

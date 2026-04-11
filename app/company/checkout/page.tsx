@@ -52,7 +52,7 @@ export default function CompanyCheckoutPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex flex-1 items-center justify-center bg-background px-4 py-10">
+      <main className="site-container flex flex-1 items-center justify-center bg-background py-10">
         <div className="grid w-full max-w-4xl gap-6 md:grid-cols-[2fr,1.4fr]">
           {/* Checkout card */}
           <Card className="border-border shadow-lg">

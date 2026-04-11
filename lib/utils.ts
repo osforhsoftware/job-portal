@@ -20,5 +20,9 @@ export function formatRelativeTime(dateStr: string): string {
   if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`
   if (diffDay < 7) return `${diffDay} day${diffDay !== 1 ? 's' : ''} ago`
   if (diffWeek < 4) return `${diffWeek} week${diffWeek !== 1 ? 's' : ''} ago`
-  return date.toLocaleDateString()
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }

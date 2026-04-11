@@ -127,7 +127,7 @@ export default function NewJobPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="site-container flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/company/dashboard">
@@ -142,7 +142,7 @@ export default function NewJobPage() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-3xl px-4 py-8">
+      <main className="site-container-sm py-8">
         {/* Progress */}
         <div className="mb-8 flex gap-2">
           {[1, 2, 3].map((s) => (

@@ -349,7 +349,7 @@ export default function CandidateProfilePage() {
 
   if (!loadingProfile && !candidateId) {
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-8">
+      <div className="site-container-md py-8">
         <CandidateHubNav className="mb-6" />
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
@@ -377,7 +377,7 @@ export default function CandidateProfilePage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <div className="site-container-md py-8">
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <Link href="/candidate/dashboard">

@@ -45,7 +45,7 @@ export default function AdminBulkUploadLogsPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1 bg-background p-4 md:p-8">
-        <div className="container mx-auto max-w-6xl space-y-6">
+        <div className="site-container space-y-6">
           <AdminNav role={userRole ?? undefined} />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

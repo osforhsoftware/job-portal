@@ -25,7 +25,7 @@ export default function RootLoading() {
           </div>
         </div>
         <div className="flex justify-center text-center loading-fade-up">
-          <BrandLogo size="lg" />
+          <BrandLogo size="xl" />
           {/* <p className="text-xs text-muted-foreground mt-1">Loading...</p> */}
         </div>
 

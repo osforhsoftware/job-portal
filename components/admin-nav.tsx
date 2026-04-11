@@ -20,6 +20,7 @@ import {
   Tags,
   FileSpreadsheet,
   Activity,
+  ClipboardList,
 } from "lucide-react"
 
 const navItems = [
@@ -39,6 +40,7 @@ const navItems = [
 ]
 
 const superAdminOnlyNavItems = [
+  { href: "/admin/demands-overview", label: "Demands & submissions", icon: ClipboardList },
   { href: "/admin/job-categories", label: "Job Categories", icon: Tags },
 ]
 

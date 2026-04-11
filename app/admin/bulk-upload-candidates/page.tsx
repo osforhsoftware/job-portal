@@ -247,7 +247,7 @@ export default function AdminBulkUploadCandidatesPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1 bg-background p-4 md:p-8">
-        <div className="container mx-auto max-w-5xl space-y-6">
+        <div className="site-container-lg space-y-6">
           <AdminNav role={userRole ?? undefined} />
 
           <div>

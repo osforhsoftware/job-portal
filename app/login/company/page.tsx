@@ -80,7 +80,7 @@ export default function CompanyLoginPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex flex-1 items-center justify-center bg-background p-4">
+      <main className="site-container flex flex-1 items-center justify-center bg-background py-12">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">

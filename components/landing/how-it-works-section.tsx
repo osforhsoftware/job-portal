@@ -38,7 +38,7 @@ const steps = [
 export function HowItWorksSection() {
   return (
     <section className="bg-background py-20">
-      <div className="container mx-auto px-4">
+      <div className="site-container">
         {/* Header */}
         <div className="mx-auto mb-16 max-w-2xl text-center">
           <span className="mb-4 inline-block rounded-full bg-primary/10 px-4 py-1 text-sm font-medium text-primary">
