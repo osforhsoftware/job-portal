@@ -82,14 +82,14 @@ function SegmentedControl<T extends string>({
   renderOption?: (v: T) => React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-xl bg-[#F3F4F6] p-1 ring-1 ring-[#E5E7EB] shadow-sm">
+    <div className="flex min-w-0 items-center gap-1 rounded-xl bg-[#F3F4F6] p-1 ring-1 ring-[#E5E7EB] shadow-sm">
       {options.map((opt) => (
         <button
           key={opt}
           type="button"
           onClick={() => onChange(opt)}
           className={[
-            "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium",
+            "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium sm:px-3 sm:text-sm",
             "transition-colors duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[#2563EB]",
             value === opt
               ? "bg-[#2563EB] text-white shadow-sm ring-1 ring-[#1D4ED8]"
@@ -330,9 +330,9 @@ export default function CreateDemandPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <Card className="min-w-0">
+    <div className="min-w-0 space-y-6">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[1fr_360px]">
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-primary" />
@@ -825,9 +825,9 @@ export default function CreateDemandPage() {
 
             {/* ── Joining & Status & Deadline ── */}
             <section className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Joining */}
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <Label>Joining</Label>
                   <SegmentedControl
                     options={["immediate", "scheduled"] as const}
@@ -842,21 +842,21 @@ export default function CreateDemandPage() {
                   />
                 </div>
                 {/* Deadline - only relevant when joining is scheduled */}
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <Label
                     htmlFor="deadline"
                     className={joining === "immediate" ? "text-muted-foreground" : undefined}
                   >
                     Deadline
                   </Label>
-                  <div className="relative">
+                  <div className="relative min-w-0">
                     <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       id="deadline"
                       type="date"
                       value={deadline}
                       onChange={(e) => setDeadline(e.target.value)}
-                      className="pl-9"
+                      className="min-w-0 pl-9"
                       disabled={joining === "immediate"}
                     />
                   </div>
@@ -871,7 +871,7 @@ export default function CreateDemandPage() {
               {/* Status — coloured chips */}
               <div className="space-y-2">
                 <Label>Status</Label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {(["open", "closed", "on_hold"] as const).map((s) => (
                     <button
                       key={s}
@@ -879,7 +879,7 @@ export default function CreateDemandPage() {
                       onClick={() => setStatus(s)}
                       data-active={status === s}
                       className={[
-                        "flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-150 focus:outline-none",
+                        "flex w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-150 focus:outline-none",
                         status === s
                           ? s === "open"
                             ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500"

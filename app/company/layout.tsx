@@ -206,18 +206,20 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
       </aside>
 
       {/* Main area */}
-      <div className="flex flex-1 flex-col min-w-0">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur lg:px-8">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-40 flex h-16 min-w-0 items-center justify-between gap-2 border-b border-border bg-background/95 px-4 backdrop-blur lg:px-8">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="shrink-0 lg:hidden"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             <Menu className="h-6 w-6" />
           </Button>
 
-          <h1 className="text-lg font-semibold text-foreground truncate">{pageTitle}</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-center text-lg font-semibold text-foreground sm:text-left">{pageTitle}</h1>
+          </div>
 
           <div className="flex items-center gap-2 shrink-0">
             <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
@@ -269,7 +271,7 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 lg:p-8">{children}</main>
+        <main className="min-w-0 flex-1 overflow-auto p-4 lg:p-8">{children}</main>
       </div>
 
       {sidebarOpen && (

@@ -610,38 +610,38 @@ export default function AgentDemandsPage() {
   if (loading) return <PageLoader />
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">Company Demands</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             View open demands and upload CVs for any role
           </p>
         </div>
-        <Button asChild className="gap-2 shrink-0 self-start">
+        <Button asChild className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 self-start sm:w-auto">
           <Link href="/agent/bulk-upload">
-            <Users className="h-4 w-4" />
+            <Users className="h-4 w-4 shrink-0" />
             Submit Candidates
           </Link>
         </Button>
       </div>
 
       {/* ── Stats Bar ── */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
           { label: "Open Demands", value: totalOpen, icon: Briefcase, color: "text-blue-500" },
           { label: "Total Positions", value: totalPositions, icon: Users, color: "text-violet-500" },
           { label: "Filled", value: totalFilled, icon: TrendingUp, color: "text-emerald-500" },
         ].map(({ label, value, icon: Icon, color }) => (
-          <Card key={label} className="border-border/60">
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className={`p-2 rounded-lg bg-muted ${color}`}>
+          <Card key={label} className="min-w-0 border-border/60">
+            <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+              <div className={`shrink-0 rounded-lg bg-muted p-2 ${color}`}>
                 <Icon className="h-4 w-4" />
               </div>
-              <div className="min-w-0">
-                <p className="text-xl font-bold leading-none">{value}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 truncate">{label}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xl font-bold leading-none tabular-nums sm:text-2xl">{value}</p>
+                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground line-clamp-2 sm:text-xs">{label}</p>
               </div>
             </CardContent>
           </Card>
@@ -649,19 +649,19 @@ export default function AgentDemandsPage() {
       </div>
 
       {/* ── Filters + view ── */}
-      <Card className="border-border/60">
-        <CardContent className="pt-4 pb-4 space-y-4">
+      <Card className="min-w-0 overflow-hidden border-border/60">
+        <CardContent className="space-y-4 pb-4 pt-4">
           <MarketplaceDemandFilterControls
             filters={filters}
             onFiltersChange={setFiltersStable}
             totalCount={openDemands.length}
             filteredCount={filtered.length}
           />
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/60 pt-3">
-            <span className="text-xs text-muted-foreground mr-auto hidden sm:inline">
+          <div className="flex flex-col gap-3 border-t border-border/60 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <span className="mr-auto hidden text-xs text-muted-foreground sm:inline">
               Showing open demands only · country matches location or nationalities
             </span>
-            <div className="flex items-center rounded-lg border border-border/60 p-1 gap-0.5 bg-muted/30">
+            <div className="flex w-full min-w-0 items-center justify-center gap-0.5 self-end rounded-lg border border-border/60 bg-muted/30 p-1 sm:w-auto sm:justify-end">
               {([
                 { mode: "grid" as ViewMode, icon: LayoutGrid, label: "Grid" },
                 { mode: "list" as ViewMode, icon: List, label: "List" },
@@ -669,13 +669,15 @@ export default function AgentDemandsPage() {
               ]).map(({ mode, icon: Icon, label }) => (
                 <Button
                   key={mode}
+                  type="button"
                   variant={viewMode === mode ? "default" : "ghost"}
                   size="sm"
-                  className="h-7 w-7 p-0"
+                  className="h-9 min-w-0 flex-1 px-2 sm:h-8 sm:flex-initial sm:px-3"
                   onClick={() => setViewMode(mode)}
                   title={label}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className="h-3.5 w-3.5 shrink-0 sm:mr-1" />
+                  <span className="hidden sm:inline">{label}</span>
                 </Button>
               ))}
             </div>

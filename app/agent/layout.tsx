@@ -207,18 +207,18 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur lg:px-6">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-16 min-w-0 items-center gap-2 border-b border-border bg-background/95 px-4 backdrop-blur sm:gap-4 lg:px-6">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="shrink-0 lg:hidden"
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-foreground capitalize">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-center text-lg font-semibold capitalize text-foreground sm:text-left">
               {pathname.split("/").pop()?.replace(/-/g, " ") || "Dashboard"}
             </h2>
           </div>
@@ -243,7 +243,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
       </div>
     </div>
   )

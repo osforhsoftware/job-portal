@@ -185,14 +185,14 @@ function StatCard({ icon: Icon, label, value, colorClass, bgClass }: {
   icon: React.ElementType; label: string; value: number; colorClass: string; bgClass: string
 }) {
   return (
-    <Card className="shadow-none">
-      <CardContent className="flex items-center gap-4 p-4">
-        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", bgClass)}>
-          <Icon className={cn("h-5 w-5", colorClass)} />
+    <Card className="min-w-0 shadow-none">
+      <CardContent className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10", bgClass)}>
+          <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", colorClass)} />
         </div>
-        <div>
-          <p className="text-2xl font-semibold tracking-tight">{value}</p>
-          <p className="text-xs text-muted-foreground leading-tight mt-0.5">{label}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-xl font-semibold tabular-nums tracking-tight sm:text-2xl">{value}</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground line-clamp-2 sm:text-xs">{label}</p>
         </div>
       </CardContent>
     </Card>
@@ -569,29 +569,29 @@ export default function DemandsPage() {
 
   return (
     <TooltipProvider>
-      <div className="space-y-5">
+      <div className="min-w-0 space-y-5">
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           <StatCard icon={Briefcase}   label="Active Demands"   value={openCount}       colorClass="text-primary"        bgClass="bg-primary/10" />
           <StatCard icon={TrendingUp}  label="Total Positions"  value={totalPositions}  colorClass="text-violet-600"     bgClass="bg-violet-50 dark:bg-violet-900/20" />
           <StatCard icon={Users}       label="Positions Filled" value={totalFilled}     colorClass="text-emerald-600"    bgClass="bg-emerald-50 dark:bg-emerald-900/20" />
         </div>
         {/* Filters + view toggle */}
-        <Card className="shadow-none">
-          <CardContent className="py-4 px-4 space-y-4">
+        <Card className="min-w-0 overflow-hidden shadow-none">
+          <CardContent className="space-y-4 px-4 py-4">
             <MarketplaceDemandFilterControls
               filters={filters}
               onFiltersChange={setFiltersStable}
               totalCount={demands.length}
               filteredCount={filtered.length}
             />
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border/60 pt-3">
-              <span className="text-xs text-muted-foreground mr-auto hidden sm:inline">
+            <div className="flex flex-col gap-3 border-t border-border/60 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+              <span className="mr-auto hidden text-xs text-muted-foreground sm:inline">
                 Country matches location text or accepted nationalities
               </span>
-              {/* View toggle */}
-              <div className="flex items-center gap-0.5 rounded-lg border bg-muted/40 p-1">
+              {/* View toggle — icon-only on narrow screens so all modes stay visible */}
+              <div className="flex w-full min-w-0 items-center justify-center gap-0.5 self-end rounded-lg border bg-muted/40 p-1 sm:w-auto sm:justify-end">
                 {([
                   { mode: "grid"  as ViewMode, Icon: LayoutGrid,  label: "Grid"  },
                   { mode: "float" as ViewMode, Icon: LayoutList,  label: "List"  },
@@ -599,16 +599,18 @@ export default function DemandsPage() {
                 ] as const).map(({ mode, Icon, label }) => (
                   <button
                     key={mode}
+                    type="button"
                     onClick={() => setViewMode(mode)}
                     title={label}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors sm:flex-initial sm:px-2.5",
                       viewMode === mode
-                        ? "bg-background text-foreground shadow-sm border"
+                        ? "border bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    <Icon className="h-3.5 w-3.5" />{label}
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="hidden sm:inline">{label}</span>
                   </button>
                 ))}
               </div>
@@ -753,7 +755,7 @@ export default function DemandsPage() {
 
         {/* ══ TABLE VIEW ═════════════════════════════════════════════════════ */}
         {viewMode === "table" && filtered.length > 0 && (
-          <Card className="shadow-none overflow-hidden">
+          <Card className="min-w-0 overflow-x-auto shadow-none">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">

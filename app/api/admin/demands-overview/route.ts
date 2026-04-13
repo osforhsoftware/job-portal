@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, type Candidate } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
+
+/** Candidate row without password, plus resolved category labels for this API response. */
+type EnrichedCandidate = Omit<Candidate, 'password'> & {
+  jobCategoryName?: string
+  jobSubCategoryName?: string
+}
 
 function stripPassword<T extends { password?: string }>(obj: T | null | undefined): Omit<T, 'password'> | null {
   if (!obj) return null
@@ -44,7 +50,9 @@ export async function GET() {
     const submissions = await Promise.all(
       applications.map(async (app) => {
         const candidate = await db.candidates.getById(app.candidateId)
-        let enrichedCandidate = stripPassword(candidate)
+        let enrichedCandidate: EnrichedCandidate | null = stripPassword(
+          candidate,
+        ) as EnrichedCandidate | null
         if (candidate && enrichedCandidate) {
           const [jobCategoryName, jobSubCategoryName] = await Promise.all([
             resolveJobCategoryName(candidate.jobCategoryId),

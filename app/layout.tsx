@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   description: 'Revolutionary job recruitment platform with bidding system for candidates, companies, and agencies',
   // generator: 'v0.app',
   icons: {
-    icon: [{ url: '/one_my_job_icon_1.png', type: 'image/png' }],
-    apple: '/one_my_job_icon_1.png',
+    icon: [{ url: '/one_my_job_icon-.png', type: 'image/png' }],
+    apple: '/one_my_job_icon-.png',
   },
 }
 
@@ -39,7 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="font-sans antialiased" suppressHydrationWarning>
+      <body className="font-sans antialiased min-h-screen overflow-x-hidden" suppressHydrationWarning>
         <ThemeProviderWrapper>
           {children}
         </ThemeProviderWrapper>

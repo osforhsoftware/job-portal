@@ -196,3 +196,17 @@
 .loading-fade-up-delay-1 { animation-delay: 0.1s; }
 .loading-fade-up-delay-2 { animation-delay: 0.2s; }
 .loading-fade-up-delay-3 { animation-delay: 0.3s; }
+
+/* Logo-only loading indicator (no icons / rings / shimmer) */
+@keyframes logo-loading {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.loading-logo-pulse {
+  animation: logo-loading 1.6s ease-in-out infinite;
+}

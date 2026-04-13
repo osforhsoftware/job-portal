@@ -18,6 +18,8 @@ type BrandLogoProps = {
   size?: keyof typeof sizes
   /** Defaults to home `/`; use e.g. `/agency/dashboard` in app shells. */
   href?: string
+  /** Static branding (no link) — e.g. full-page loading states */
+  presentational?: boolean
 }
 
 export function BrandLogo({
@@ -27,9 +29,10 @@ export function BrandLogo({
   wordmarkClassName,
   size = "md",
   href = "/",
+  presentational = false,
 }: BrandLogoProps) {
-  return (
-    <Link href={href} className={cn("inline-flex items-center gap-2", className)}>
+  const inner = (
+    <>
       <img
         src="/one_my_job_icon_1.png"
         alt="ONEMYJOB"
@@ -41,6 +44,16 @@ export function BrandLogo({
           <span className="text-brand-green">MYJOB</span>
         </span>
       )}
+    </>
+  )
+
+  if (presentational) {
+    return <span className={cn("inline-flex items-center gap-2", className)}>{inner}</span>
+  }
+
+  return (
+    <Link href={href} className={cn("inline-flex items-center gap-2", className)}>
+      {inner}
     </Link>
   )
 }

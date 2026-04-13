@@ -51,6 +51,9 @@ function Button({
   return (
     <Comp
       data-slot="button"
+      // Extensions (password managers, form helpers) often inject attributes like
+      // `fdprocessedid` on buttons before hydration; suppress avoids false-positive mismatches.
+      suppressHydrationWarning
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

@@ -176,8 +176,8 @@ export function MarketplaceDemandFilterControls({
       onOpenChange={setFiltersOpen}
       className={cn("space-y-0", className)}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="min-w-0 text-sm text-muted-foreground">
           Showing{" "}
           <span className="font-semibold text-foreground">{filteredCount}</span>{" "}
           of{" "}

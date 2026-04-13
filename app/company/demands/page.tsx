@@ -124,37 +124,37 @@ export default function CompanyDemandsPage() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">My Demands</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Manage your job openings and review candidate submissions</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">Manage your job openings and review candidate submissions</p>
         </div>
-        <Button asChild className="gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-sm">
+        <Button asChild className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-sm sm:w-auto">
           <Link href="/company/demands/new">
-            <Plus className="h-4 w-4" />Create Demand
+            <Plus className="h-4 w-4 shrink-0" />Create Demand
           </Link>
         </Button>
       </div>
 
       {/* ── Stats ── */}
       {demands.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           {[
             { icon: Briefcase,    label: "Active Demands",   val: open,          color: "text-indigo-500",  bg: "bg-indigo-500/10" },
             { icon: TrendingUp,   label: "Total Positions",  val: totalPositions, color: "text-violet-500",  bg: "bg-violet-500/10" },
             { icon: CheckCircle2, label: "Positions Filled", val: totalFilled,   color: "text-emerald-500", bg: "bg-emerald-500/10" },
           ].map(({ icon: Icon, label, val, color, bg }) => (
-            <Card key={label} className="border-border/60">
+            <Card key={label} className="min-w-0 border-border/60">
               <CardContent className="flex items-center gap-3 p-4">
-                <div className={cn("rounded-xl p-2.5 shrink-0", bg)}>
+                <div className={cn("shrink-0 rounded-xl p-2.5", bg)}>
                   <Icon className={cn("h-5 w-5", color)} />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{val}</p>
-                  <p className="text-xs text-muted-foreground">{label}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-2xl font-bold tabular-nums">{val}</p>
+                  <p className="text-xs leading-snug text-muted-foreground line-clamp-2">{label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -184,19 +184,23 @@ export default function CompanyDemandsPage() {
       {demands.length > 0 && (
         <>
           {/* toggle */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{demands.length} demand{demands.length !== 1 ? "s" : ""}</p>
-            <div className="flex items-center gap-1 rounded-lg border border-border p-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="min-w-0 text-sm text-muted-foreground">
+              {demands.length} demand{demands.length !== 1 ? "s" : ""}
+            </p>
+            <div className="flex shrink-0 items-center gap-1 rounded-lg border border-border p-1">
               {([
                 { mode: "grid" as ViewMode, Icon: LayoutGrid },
                 { mode: "list" as ViewMode, Icon: LayoutList },
               ]).map(({ mode, Icon }) => (
                 <button
                   key={mode}
+                  type="button"
+                  title={mode === "grid" ? "Grid view" : "List view"}
                   onClick={() => setView(mode)}
                   className={cn(
                     "rounded-md p-1.5 transition-colors",
-                    view === mode ? "bg-indigo-600 text-white" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    view === mode ? "bg-indigo-600 text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <Icon className="h-4 w-4" />

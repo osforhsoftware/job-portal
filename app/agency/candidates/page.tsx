@@ -41,6 +41,7 @@ import {
   Upload,
   ChevronDown,
   Eye,
+  FilterX,
 } from "lucide-react"
 import { PageLoader } from "@/components/page-loader"
 import { cn } from "@/lib/utils"
@@ -270,6 +271,7 @@ export default function CandidatesPage() {
   const [search, setSearch]         = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [sourceFilter, setSourceFilter] = useState("all")
+  const [agentFilter, setAgentFilter]   = useState("all")
   const [agencyId, setAgencyId]     = useState("")
   const [message, setMessage]       = useState<{ type: "success" | "error"; text: string } | null>(null)
 
@@ -329,17 +331,40 @@ export default function CandidatesPage() {
 
   // ── Filtering ───────────────────────────────────────────────────────────────
   const filtered = candidates.filter(c => {
-    const q = search.toLowerCase()
+    const q = search.trim().toLowerCase()
     const matchSearch =
+      !q ||
       `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
-      c.email.toLowerCase().includes(q) ||
+      (c.email && c.email.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.toLowerCase().includes(q)) ||
+      (c.currentLocation && c.currentLocation.toLowerCase().includes(q)) ||
       c.skills.some(s => s.toLowerCase().includes(q))
+    const matchAgent =
+      agentFilter === "all"
+        ? true
+        : agentFilter === "unassigned"
+          ? !c.agentId
+          : c.agentId === agentFilter
     return (
       matchSearch &&
+      matchAgent &&
       (statusFilter === "all" || c.status === statusFilter) &&
       (sourceFilter === "all" || c.source === sourceFilter)
     )
   })
+
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    statusFilter !== "all" ||
+    sourceFilter !== "all" ||
+    agentFilter !== "all"
+
+  function clearFilters() {
+    setSearch("")
+    setStatusFilter("all")
+    setSourceFilter("all")
+    setAgentFilter("all")
+  }
 
   // ── Create ──────────────────────────────────────────────────────────────────
   async function handleCreateCandidate(e: React.FormEvent) {
@@ -445,23 +470,23 @@ export default function CandidatesPage() {
 
       {/* Filters bar */}
       <Card className="shadow-none">
-        <CardContent className="py-3 px-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <CardContent className="space-y-3 px-4 py-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative min-w-0 flex-1 sm:min-w-[220px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search name, email, skills…"
+                placeholder="Search name, email, phone, location, skills…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="pl-9 h-9"
+                className="h-9 pl-9"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px] h-9">
-                <SelectValue placeholder="All Status" />
+              <SelectTrigger className="h-9 w-full sm:w-[160px]">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="available">Available</SelectItem>
                 <SelectItem value="under_bidding">Under Bidding</SelectItem>
                 <SelectItem value="interviewed">Interviewed</SelectItem>
@@ -471,18 +496,50 @@ export default function CandidatesPage() {
               </SelectContent>
             </Select>
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-[160px] h-9">
-                <SelectValue placeholder="All Sources" />
+              <SelectTrigger className="h-9 w-full sm:w-[160px]">
+                <SelectValue placeholder="Source" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Sources</SelectItem>
+                <SelectItem value="all">All sources</SelectItem>
                 <SelectItem value="referral">Referral</SelectItem>
                 <SelectItem value="bulk_upload">Bulk Upload</SelectItem>
                 <SelectItem value="manual">Manual</SelectItem>
                 <SelectItem value="link">Link</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={agentFilter} onValueChange={setAgentFilter}>
+              <SelectTrigger className="h-9 w-full sm:w-[180px]">
+                <SelectValue placeholder="Agent" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All agents</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {agents.map(a => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 shrink-0 gap-1.5"
+                onClick={clearFilters}
+              >
+                <FilterX className="h-3.5 w-3.5" />
+                Clear filters
+              </Button>
+            )}
           </div>
+          <p className="text-xs text-muted-foreground">
+            Showing <span className="font-medium text-foreground">{filtered.length}</span>
+            {" "}of{" "}
+            <span className="font-medium text-foreground">{candidates.length}</span>
+            {" "}candidates
+          </p>
         </CardContent>
       </Card>
 
@@ -494,7 +551,7 @@ export default function CandidatesPage() {
               <Users className="h-10 w-10 opacity-25" />
               <p className="text-sm font-medium">No candidates found</p>
               <p className="text-xs opacity-60">
-                {search || statusFilter !== "all" || sourceFilter !== "all"
+                {hasActiveFilters
                   ? "Try adjusting your filters"
                   : "Add your first candidate to get started"}
               </p>
