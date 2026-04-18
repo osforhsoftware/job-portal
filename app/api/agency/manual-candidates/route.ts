@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const rawAgencyId = (formData.get('agencyId') as string | null)?.trim() || ''
 
     let agencyId: string
-    let agent: Awaited<ReturnType<typeof db.agents.getById>> = null
+    let agent: Awaited<ReturnType<typeof db.agents.getById>> = undefined
 
     if (rawAgentId) {
       const found = await db.agents.getById(rawAgentId)
