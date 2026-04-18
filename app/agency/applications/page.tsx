@@ -194,7 +194,7 @@ export default function ApplicationsPage() {
                           {app.status}
                         </span>
                       </TableCell>
-                      <TableCell>{app.commission > 0 ? `$${app.commission.toLocaleString()}` : "-"}</TableCell>
+                      <TableCell>{app.commission > 0 ? app.commission.toLocaleString() : "-"}</TableCell>
                       <TableCell className="text-muted-foreground">{new Date(app.submittedAt).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         {(app.status === "pending" || app.status === "shortlisted") && (

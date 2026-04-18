@@ -15,7 +15,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts"
-import { BarChart3, TrendingUp, Users, DollarSign, Award, Target } from "lucide-react"
+import { BarChart3, TrendingUp, Users, Wallet, Award, Target } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { PageLoader } from "@/components/page-loader"
@@ -80,11 +80,7 @@ function ChartTooltip({ active, payload, label }: {
             style={{ background: entry.color }}
           />
           <span className="capitalize text-muted-foreground">{entry.name}:</span>
-          <span>
-            {entry.name?.toLowerCase().includes("earn") || entry.name?.toLowerCase().includes("rev")
-              ? `$${Number(entry.value).toLocaleString()}`
-              : Number(entry.value).toLocaleString()}
-          </span>
+          <span>{Number(entry.value).toLocaleString()}</span>
         </div>
       ))}
     </div>
@@ -214,11 +210,10 @@ export default function ReportsPage() {
           iconClass="bg-amber-500/10 text-amber-600 dark:text-amber-400"
         />
         <KpiCard
-          icon={DollarSign}
+          icon={Wallet}
           label="Total Revenue"
           sub="Commission earned"
           value={fmtK(report.totalEarnings)}
-          prefix="$"
           iconClass="bg-pink-500/10 text-pink-600 dark:text-pink-400"
         />
       </div>
@@ -401,7 +396,7 @@ export default function ReportsPage() {
                     tick={{ fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => `$${v >= 1000 ? `${v / 1000}k` : v}`}
+                    tickFormatter={(v) => (v >= 1000 ? `${v / 1000}k` : String(v))}
                   />
                   <Tooltip content={<ChartTooltip />} />
                   <Area

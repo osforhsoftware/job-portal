@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Lock, Loader2, CheckCircle } from "lucide-react"
@@ -122,28 +122,28 @@ function ResetPasswordInner() {
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="newPassword">New password</Label>
-                  <Input
+                  <PasswordInput
                     id="newPassword"
-                    type="password"
                     placeholder="Min 6 characters"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
                     minLength={6}
                     disabled={loading}
+                    autoComplete="new-password"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm new password</Label>
-                  <Input
+                  <PasswordInput
                     id="confirmPassword"
-                    type="password"
                     placeholder="Confirm password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     minLength={6}
                     disabled={loading}
+                    autoComplete="new-password"
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>

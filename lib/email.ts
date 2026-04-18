@@ -4,9 +4,21 @@ import nodemailer from 'nodemailer'
  * Email is sent only via Nodemailer + SMTP.
  * Required env: SMTP_HOST, SMTP_USER, SMTP_PASS
  * Optional: SMTP_PORT (default 587), SMTP_SECURE (true for port 465), SMTP_FROM
+ * TLS / self-signed certs:
+ * - Production: verifies the SMTP certificate by default (rejectUnauthorized: true).
+ * - Development: defaults to relaxed TLS (rejectUnauthorized: false) so local Mailpit/MailHog/etc. work.
+ * - Override anywhere: SMTP_TLS_REJECT_UNAUTHORIZED=true (strict) or false (allow self-signed).
  *
  * EMAIL_SERVICE_KEY is not used — authentication is SMTP_USER + SMTP_PASS only.
  */
+
+function tlsRejectUnauthorized(): boolean {
+  const raw = process.env.SMTP_TLS_REJECT_UNAUTHORIZED?.trim().toLowerCase()
+  if (raw === 'false') return false
+  if (raw === 'true') return true
+  // Unset: strict in production, relaxed in development (avoids "self-signed certificate in chain" locally)
+  return process.env.NODE_ENV === 'production'
+}
 
 function isSmtpConfigured(): boolean {
   return Boolean(
@@ -22,6 +34,13 @@ function createSmtpTransport() {
   const secure = process.env.SMTP_SECURE === 'true'
   const user = process.env.SMTP_USER!.trim()
   const pass = process.env.SMTP_PASS!
+  const rejectUnauthorized = tlsRejectUnauthorized()
+
+  if (!rejectUnauthorized && process.env.NODE_ENV === 'production') {
+    console.warn(
+      '[email] SMTP TLS verification is disabled (SMTP_TLS_REJECT_UNAUTHORIZED or default). Use only with trusted SMTP.'
+    )
+  }
 
   return nodemailer.createTransport({
     host,
@@ -30,6 +49,9 @@ function createSmtpTransport() {
     auth: {
       user,
       pass,
+    },
+    tls: {
+      rejectUnauthorized,
     },
   })
 }

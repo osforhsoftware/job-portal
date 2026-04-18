@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import {
   Users,
   FileCheck,
-  DollarSign,
+  Wallet,
   TrendingUp,
   Copy,
   Link2,
@@ -166,11 +166,11 @@ export default function AgentDashboard() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Earnings</CardTitle>
               <div className="rounded-full bg-orange-100 p-2 dark:bg-orange-900/20">
-                <DollarSign className="h-4 w-4 text-orange-600" />
+                <Wallet className="h-4 w-4 text-orange-600" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${(stats?.totalEarnings || 0).toLocaleString()}</div>
+              <div className="text-2xl font-bold">{(stats?.totalEarnings || 0).toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">{stats?.commissionPercent || 0}% commission rate</p>
             </CardContent>
           </Card>

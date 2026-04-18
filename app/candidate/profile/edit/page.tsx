@@ -8,8 +8,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { ArrowLeft, ArrowRight, CheckCircle, Loader2 } from "lucide-react"
-import { PersonalInfoStep } from "@/components/candidate/steps/personal-info-step"
-import { JobProfileStep } from "@/components/candidate/steps/job-profile-step"
+import { PersonalInfoEditStep } from "@/components/candidate/steps/personal-info-edit-step"
+import { JobProfileEditStep } from "@/components/candidate/steps/job-profile-edit-step"
 import type { CandidateFormData } from "@/components/candidate/registration-wizard"
 
 const initialFormData: CandidateFormData = {
@@ -240,10 +240,10 @@ export default function CandidateProfileEditPage() {
               <p className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>
             )}
             {currentStep === 1 && (
-              <PersonalInfoStep formData={formData} updateFormData={updateFormData} />
+              <PersonalInfoEditStep formData={formData} updateFormData={updateFormData} />
             )}
             {currentStep === 2 && (
-              <JobProfileStep formData={formData} updateFormData={updateFormData} />
+              <JobProfileEditStep formData={formData} updateFormData={updateFormData} />
             )}
 
             <div className="mt-8 flex justify-between border-t border-border pt-6">

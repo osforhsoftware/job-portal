@@ -7,7 +7,7 @@ import { Header } from "@/components/header"
 import { AdminNav } from "@/components/admin-nav"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { DollarSign, ArrowLeft } from "lucide-react"
+import { Wallet, ArrowLeft } from "lucide-react"
 
 export default function AdminBidsPage() {
   const router = useRouter()
@@ -44,7 +44,7 @@ export default function AdminBidsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+                <Wallet className="h-5 w-5" />
                 Bids
               </CardTitle>
               <CardDescription>Bid list and actions will appear here.</CardDescription>

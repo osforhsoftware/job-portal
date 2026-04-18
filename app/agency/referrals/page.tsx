@@ -178,7 +178,7 @@ export default function ReferralsPage() {
                       </TableCell>
                       <TableCell>{agent.totalReferrals}</TableCell>
                       <TableCell>{agent.totalPlacements}</TableCell>
-                      <TableCell>${agent.totalEarnings.toLocaleString()}</TableCell>
+                      <TableCell>{agent.totalEarnings.toLocaleString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -410,18 +411,18 @@ export default function AgentSettingsPage() {
         <CardContent className="space-y-4">
           <div>
             <Label>New Password</Label>
-            <Input
-              type="password"
+            <PasswordInput
               value={passwordForm.new}
               onChange={e => setPasswordForm(p => ({ ...p, new: e.target.value }))}
+              autoComplete="new-password"
             />
           </div>
           <div>
             <Label>Confirm New Password</Label>
-            <Input
-              type="password"
+            <PasswordInput
               value={passwordForm.confirm}
               onChange={e => setPasswordForm(p => ({ ...p, confirm: e.target.value }))}
+              autoComplete="new-password"
             />
           </div>
           <Button onClick={changePassword} disabled={saving}>

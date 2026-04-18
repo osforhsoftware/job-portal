@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  DollarSign,
+  Wallet,
   Users,
   Briefcase,
   Download,
@@ -104,10 +104,10 @@ export default function CommissionPage() {
         <Card>
           <CardContent className="flex items-center gap-4 pt-6">
             <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/20">
-              <DollarSign className="h-5 w-5 text-green-600" />
+              <Wallet className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">${totalEarnings.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{totalEarnings.toLocaleString()}</p>
               <p className="text-sm text-muted-foreground">Total Earnings</p>
             </div>
           </CardContent>
@@ -170,7 +170,7 @@ export default function CommissionPage() {
                           <TableCell className="font-medium">{a.agentName}</TableCell>
                           <TableCell>{a.commissionPercent}%</TableCell>
                           <TableCell>{a.applications}</TableCell>
-                          <TableCell className="font-medium text-green-600">${a.earnings.toLocaleString()}</TableCell>
+                          <TableCell className="font-medium text-green-600">{a.earnings.toLocaleString()}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -207,7 +207,7 @@ export default function CommissionPage() {
                           <TableCell className="font-medium">{d.demandTitle}</TableCell>
                           <TableCell className="text-muted-foreground">{d.companyName}</TableCell>
                           <TableCell>{d.count}</TableCell>
-                          <TableCell className="font-medium text-green-600">${d.earnings.toLocaleString()}</TableCell>
+                          <TableCell className="font-medium text-green-600">{d.earnings.toLocaleString()}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -243,7 +243,7 @@ export default function CommissionPage() {
                         <TableRow key={p.id}>
                           <TableCell className="text-muted-foreground">{new Date(p.date).toLocaleDateString()}</TableCell>
                           <TableCell className="capitalize">{p.type.replace("_", " ")}</TableCell>
-                          <TableCell className="font-medium">${p.amount.toLocaleString()}</TableCell>
+                          <TableCell className="font-medium">{p.amount.toLocaleString()}</TableCell>
                           <TableCell>
                             <Badge variant={p.status === "completed" ? "default" : p.status === "pending" ? "secondary" : "destructive"} className="capitalize">
                               {p.status}

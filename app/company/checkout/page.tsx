@@ -148,7 +148,7 @@ export default function CompanyCheckoutPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-foreground">
-                    {plan === "starter" ? "$0" : plan === "pro" ? "$8" : "$12"}
+                    {plan === "starter" ? "0" : plan === "pro" ? "8" : "12"}
                   </p>
                   <p className="text-[11px] text-muted-foreground">per month</p>
                 </div>

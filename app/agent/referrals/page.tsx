@@ -138,7 +138,7 @@ export default function AgentReferralsPage() {
               <TrendingUp className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">${totalEarnings.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{totalEarnings.toLocaleString()}</p>
               <p className="text-sm text-muted-foreground">Total Earnings</p>
             </div>
           </CardContent>

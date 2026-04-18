@@ -55,7 +55,7 @@ import {
 import {
   Briefcase,
   MapPin,
-  DollarSign,
+  Wallet,
   Calendar,
   Clock,
   Loader2,
@@ -910,7 +910,7 @@ function PublicDemandsListingInner({
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       {formatSalary(job.salary) !== "—" && (
                         <span className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
+                          <Wallet className="h-3 w-3" />
                           {formatSalary(job.salary)}
                         </span>
                       )}

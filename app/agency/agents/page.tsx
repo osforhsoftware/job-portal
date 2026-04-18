@@ -1,10 +1,11 @@
-  "use client"
+"use client"
 
   import { useEffect, useState } from "react"
   import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
   import { Button } from "@/components/ui/button"
   import { Badge } from "@/components/ui/badge"
   import { Input } from "@/components/ui/input"
+  import { PasswordInput } from "@/components/ui/password-input"
   import { Label } from "@/components/ui/label"
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
   import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -267,7 +268,7 @@
                 </div>
                 <div>
                   <Label htmlFor="add-password">Password *</Label>
-                  <Input id="add-password" type="password" placeholder="Enter password" value={formData.password} onChange={e => setFormData(p => ({ ...p, password: e.target.value }))} />
+                  <PasswordInput id="add-password" placeholder="Enter password" value={formData.password} onChange={e => setFormData(p => ({ ...p, password: e.target.value }))} autoComplete="new-password" />
                 </div>
                 <div>
                   <Label htmlFor="add-phone">Phone</Label>
@@ -427,7 +428,7 @@
               </div>
               <div>
                 <Label htmlFor="edit-password">New Password (leave blank to keep current)</Label>
-                <Input id="edit-password" type="password" placeholder="Leave blank to keep current" value={formData.password} onChange={e => setFormData(p => ({ ...p, password: e.target.value }))} />
+                <PasswordInput id="edit-password" placeholder="Leave blank to keep current" value={formData.password} onChange={e => setFormData(p => ({ ...p, password: e.target.value }))} autoComplete="new-password" />
               </div>
               <div>
                 <Label htmlFor="edit-phone">Phone</Label>

@@ -2,13 +2,24 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select,
@@ -18,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Building2, ArrowRight, Loader2, Upload, Check, FileText, X } from "lucide-react"
+import { cn, parseJsonResponse } from "@/lib/utils"
 
 const industries = [
   "Construction", "Healthcare", "Hospitality", "IT & Technology",
@@ -35,73 +47,161 @@ const countries = [
   "Bahrain", "Oman", "Jordan", "Egypt", "India", "Pakistan", "Other"
 ]
 
+const MAX_PROOF_MB = 10
+const MAX_LOGO_MB = 2
+
+const companyRegisterSchema = z
+  .object({
+    companyName: z.string().trim().min(1, "Company name is required"),
+    tradeLicense: z.string().trim().min(1, "Trade license number is required"),
+    industry: z.string().min(1, "Industry is required"),
+    companySize: z.string().min(1, "Company size is required"),
+    country: z.string().min(1, "Country is required"),
+    city: z.string().trim().min(1, "City is required"),
+    website: z.preprocess(
+      (val) => {
+        if (val == null) return ""
+        const s = String(val).trim()
+        return s === "" ? "" : s
+      },
+      z.union([
+        z.literal(""),
+        z.string().url("Enter a valid website URL"),
+      ]),
+    ),
+    description: z.string().optional(),
+    contactName: z.string().trim().min(1, "Contact name is required"),
+    contactPosition: z.string().trim().min(1, "Position / title is required"),
+    contactEmail: z
+      .string()
+      .trim()
+      .min(1, "Email is required")
+      .email("Enter a valid email address"),
+    contactPhone: z.string().trim().min(1, "Phone / WhatsApp is required"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+    acceptTerms: z.boolean().refine((v) => v === true, {
+      message: "You must accept the terms and privacy policy",
+    }),
+    companyProof: z.string().optional(),
+    logoFile: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
+      })
+    }
+  })
+
+type CompanyRegisterValues = z.infer<typeof companyRegisterSchema>
+
 export default function CompanyRegisterPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState(1)
-  const [formData, setFormData] = useState({
-    companyName: "",
-    tradeLicense: "",
-    industry: "",
-    companySize: "",
-    website: "",
-    country: "",
-    city: "",
-    address: "",
-    description: "",
-    contactName: "",
-    contactEmail: "",
-    contactPhone: "",
-    contactPosition: "",
-    password: "",
-    confirmPassword: "",
-    logoFile: null as File | null,
-    companyProofFile: null as File | null,
-    acceptTerms: false,
-  })
-  const [error, setError] = useState("")
+  const [companyProofFile, setCompanyProofFile] = useState<File | null>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [serverError, setServerError] = useState("")
   const [uploadingProof, setUploadingProof] = useState(false)
 
-  const updateForm = (field: string, value: string | boolean | File | null) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+  const form = useForm<CompanyRegisterValues>({
+    resolver: zodResolver(companyRegisterSchema),
+    shouldUnregister: false,
+    defaultValues: {
+      companyName: "",
+      tradeLicense: "",
+      industry: "",
+      companySize: "",
+      country: "",
+      city: "",
+      website: "",
+      description: "",
+      contactName: "",
+      contactPosition: "",
+      contactEmail: "",
+      contactPhone: "",
+      password: "",
+      confirmPassword: "",
+      acceptTerms: false,
+      companyProof: "",
+      logoFile: "",
+    },
+    mode: "onSubmit",
+  })
 
-  const uploadCompanyProof = async (): Promise<string | null> => {
-    if (!formData.companyProofFile) return null
+  const proofError = form.formState.errors.companyProof
+  const logoError = form.formState.errors.logoFile
+
+  const uploadCompanyProof = async (file: File): Promise<string | null> => {
     setUploadingProof(true)
     try {
       const fd = new FormData()
-      fd.append("file", formData.companyProofFile)
+      fd.append("file", file)
       fd.append("type", "company-proof")
       const res = await fetch("/api/upload", { method: "POST", body: fd })
-      const data = await res.json()
+      const data = await parseJsonResponse<{ error?: string; url?: string }>(res)
       if (!res.ok) throw new Error(data.error || "Upload failed")
+      if (!data.url) throw new Error("Upload did not return a file URL")
       return data.url
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Document upload failed")
+      setServerError(err instanceof Error ? err.message : "Document upload failed")
       return null
     } finally {
       setUploadingProof(false)
     }
   }
 
-  const handleSubmit = async () => {
-    setError("")
-    if (!formData.companyProofFile) {
-      setError("Please upload a proof document (PDF/DOC/DOCX)")
+  const goToStep2 = async () => {
+    setServerError("")
+    const step1Ok = await form.trigger([
+      "companyName",
+      "tradeLicense",
+      "industry",
+      "companySize",
+      "country",
+      "city",
+      "website",
+      "description",
+    ])
+
+    if (!companyProofFile) {
+      form.setError("companyProof", {
+        type: "manual",
+        message: `Please upload a company proof document (PDF/DOC/DOCX — max ${MAX_PROOF_MB}MB)`,
+      })
       return
     }
-    if (formData.password !== formData.confirmPassword) {
-      setError("Password and confirm password do not match")
+    form.clearErrors("companyProof")
+
+    if (logoFile && logoFile.size > MAX_LOGO_MB * 1024 * 1024) {
+      form.setError("logoFile", {
+        type: "manual",
+        message: `Logo must be under ${MAX_LOGO_MB} MB`,
+      })
       return
     }
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters")
+    form.clearErrors("logoFile")
+
+    if (step1Ok) setStep(2)
+  }
+
+  const onSubmit = async (values: CompanyRegisterValues) => {
+    setServerError("")
+    if (!companyProofFile) {
+      form.setError("companyProof", {
+        type: "manual",
+        message: "Please upload a proof document (PDF/DOC/DOCX)",
+      })
+      setStep(1)
       return
     }
+
     setLoading(true)
     try {
-      const proofDocumentUrl = await uploadCompanyProof()
+      const proofDocumentUrl = await uploadCompanyProof(companyProofFile)
       if (!proofDocumentUrl) {
         setLoading(false)
         return
@@ -110,36 +210,95 @@ export default function CompanyRegisterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyName: formData.companyName,
-          tradeLicense: formData.tradeLicense,
-          industry: formData.industry,
-          companySize: formData.companySize,
-          website: formData.website || undefined,
-          country: formData.country,
-          city: formData.city,
-          address: formData.address || undefined,
-          description: formData.description || undefined,
-          contactName: formData.contactName,
-          contactEmail: formData.contactEmail,
-          contactPhone: formData.contactPhone,
-          contactPosition: formData.contactPosition,
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
+          companyName: values.companyName,
+          tradeLicense: values.tradeLicense,
+          industry: values.industry,
+          companySize: values.companySize,
+          website: values.website || undefined,
+          country: values.country,
+          city: values.city,
+          address: undefined,
+          description: values.description || undefined,
+          contactName: values.contactName,
+          contactEmail: values.contactEmail,
+          contactPhone: values.contactPhone,
+          contactPosition: values.contactPosition,
+          password: values.password,
+          confirmPassword: values.confirmPassword,
           proofDocumentUrl,
         }),
       })
-      const data = await response.json()
+      const data = await parseJsonResponse<{ error?: string }>(response)
       if (!response.ok) {
-        setError(data.error || "Registration failed")
+        setServerError(data.error || "Registration failed")
         setLoading(false)
         return
       }
       router.push("/login/company?status=registered")
-    } catch {
-      setError("Network error. Please try again.")
+    } catch (err: unknown) {
+      setServerError(
+        err instanceof Error ? err.message : "Network error. Please try again.",
+      )
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const valid = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]
+    if (!valid.includes(file.type)) {
+      form.setError("companyProof", {
+        type: "manual",
+        message: "Only PDF, DOC, or DOCX files are allowed",
+      })
+      return
+    }
+    if (file.size > MAX_PROOF_MB * 1024 * 1024) {
+      form.setError("companyProof", {
+        type: "manual",
+        message: `File size must be under ${MAX_PROOF_MB} MB`,
+      })
+      return
+    }
+    form.clearErrors("companyProof")
+    setServerError("")
+    setCompanyProofFile(file)
+  }
+
+  const clearProof = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setCompanyProofFile(null)
+  }
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    if (!file) {
+      setLogoFile(null)
+      return
+    }
+    if (!file.type.startsWith("image/")) {
+      form.setError("logoFile", {
+        type: "manual",
+        message: "Please upload an image file (PNG, JPG, etc.)",
+      })
+      return
+    }
+    if (file.size > MAX_LOGO_MB * 1024 * 1024) {
+      form.setError("logoFile", {
+        type: "manual",
+        message: `Logo must be under ${MAX_LOGO_MB} MB`,
+      })
+      return
+    }
+    form.clearErrors("logoFile")
+    setLogoFile(file)
   }
 
   return (
@@ -156,330 +315,437 @@ export default function CompanyRegisterPage() {
               <CardDescription>
                 {step === 1 ? "Company Information" : "Contact Details"}
               </CardDescription>
-              {/* Step Indicator */}
               <div className="mt-4 flex justify-center gap-2">
                 <div className={`h-2 w-16 rounded-full ${step >= 1 ? "bg-primary" : "bg-muted"}`} />
                 <div className={`h-2 w-16 rounded-full ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {step === 1 ? (
-                <>
-                  {/* Company Name */}
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName">Company Name *</Label>
-                    <Input
-                      id="companyName"
-                      placeholder="Enter company name"
-                      value={formData.companyName}
-                      onChange={(e) => updateForm("companyName", e.target.value)}
-                    />
-                  </div>
-
-                  {/* Trade License */}
-                  <div className="space-y-2">
-                    <Label htmlFor="tradeLicense">Trade License Number *</Label>
-                    <Input
-                      id="tradeLicense"
-                      placeholder="Enter trade license number"
-                      value={formData.tradeLicense}
-                      onChange={(e) => updateForm("tradeLicense", e.target.value)}
-                    />
-                  </div>
-
-                  {/* Company Proof (document upload) */}
-                  <div className="space-y-2">
-                    <Label>Company Proof Document *</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Upload trade license or company registration document (PDF, DOC, DOCX, max 10MB)
-                    </p>
-                    <div className="flex items-center gap-4">
-                      <label className="flex h-20 min-w-[140px] cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted px-4 hover:border-primary">
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (!file) return
-                            const valid = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
-                            if (!valid.includes(file.type)) {
-                              setError("Only PDF, DOC, or DOCX files are allowed")
-                              return
-                            }
-                            if (file.size > 10 * 1024 * 1024) {
-                              setError("File size must be under 10 MB")
-                              return
-                            }
-                            setError("")
-                            updateForm("companyProofFile", file)
-                          }}
-                        />
-                        {formData.companyProofFile ? (
-                          <>
-                            <Check className="h-5 w-5 text-green-600" />
-                            <span className="truncate text-sm font-medium max-w-[100px]">{formData.companyProofFile.name}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); updateForm("companyProofFile", null) }}
-                              className="rounded p-1 hover:bg-muted-foreground/20"
-                              aria-label="Remove file"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="h-6 w-6 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">Upload document</span>
-                          </>
-                        )}
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Industry & Size */}
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Industry *</Label>
-                      <Select
-                        value={formData.industry}
-                        onValueChange={(value) => updateForm("industry", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select industry" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {industries.map((ind) => (
-                            <SelectItem key={ind} value={ind.toLowerCase()}>
-                              {ind}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Company Size *</Label>
-                      <Select
-                        value={formData.companySize}
-                        onValueChange={(value) => updateForm("companySize", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {companySizes.map((size) => (
-                            <SelectItem key={size} value={size.toLowerCase()}>
-                              {size}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Country & City */}
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Country *</Label>
-                      <Select
-                        value={formData.country}
-                        onValueChange={(value) => updateForm("country", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {countries.map((country) => (
-                            <SelectItem key={country} value={country.toLowerCase()}>
-                              {country}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City *</Label>
-                      <Input
-                        id="city"
-                        placeholder="Enter city"
-                        value={formData.city}
-                        onChange={(e) => updateForm("city", e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Website */}
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website (Optional)</Label>
-                    <Input
-                      id="website"
-                      placeholder="https://www.company.com"
-                      value={formData.website}
-                      onChange={(e) => updateForm("website", e.target.value)}
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Company Description</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Brief description of your company..."
-                      rows={3}
-                      value={formData.description}
-                      onChange={(e) => updateForm("description", e.target.value)}
-                    />
-                  </div>
-
-                  {/* Logo Upload */}
-                  <div className="space-y-2">
-                    <Label>Company Logo (Optional)</Label>
-                    <div className="flex items-center gap-4">
-                      <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted hover:border-primary">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => updateForm("logoFile", e.target.files?.[0] || null)}
-                        />
-                        {formData.logoFile ? (
-                          <Check className="h-6 w-6 text-success" />
-                        ) : (
-                          <Upload className="h-6 w-6 text-muted-foreground" />
-                        )}
-                      </label>
-                      <div className="text-sm text-muted-foreground">
-                        {formData.logoFile ? formData.logoFile.name : "PNG, JPG up to 2MB"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button className="w-full gap-2" onClick={() => setStep(2)}>
-                    Continue
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {/* Contact Name */}
-                  <div className="space-y-2">
-                    <Label htmlFor="contactName">Contact Person Name *</Label>
-                    <Input
-                      id="contactName"
-                      placeholder="Full name"
-                      value={formData.contactName}
-                      onChange={(e) => updateForm("contactName", e.target.value)}
-                    />
-                  </div>
-
-                  {/* Contact Position */}
-                  <div className="space-y-2">
-                    <Label htmlFor="contactPosition">Position/Title *</Label>
-                    <Input
-                      id="contactPosition"
-                      placeholder="e.g., HR Manager"
-                      value={formData.contactPosition}
-                      onChange={(e) => updateForm("contactPosition", e.target.value)}
-                    />
-                  </div>
-
-                  {/* Contact Email */}
-                  <div className="space-y-2">
-                    <Label htmlFor="contactEmail">Email Address *</Label>
-                    <Input
-                      id="contactEmail"
-                      type="email"
-                      placeholder="contact@company.com"
-                      value={formData.contactEmail}
-                      onChange={(e) => updateForm("contactEmail", e.target.value)}
-                    />
-                  </div>
-
-                  {/* Contact Phone */}
-                  <div className="space-y-2">
-                    <Label htmlFor="contactPhone">Phone / WhatsApp *</Label>
-                    <Input
-                      id="contactPhone"
-                      type="tel"
-                      placeholder="+971 50 123 4567"
-                      value={formData.contactPhone}
-                      onChange={(e) => updateForm("contactPhone", e.target.value)}
-                    />
-                  </div>
-
-                  {/* Password - used for login */}
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password *</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Create a password (min 6 characters)"
-                      value={formData.password}
-                      onChange={(e) => updateForm("password", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="Confirm password"
-                      value={formData.confirmPassword}
-                      onChange={(e) => updateForm("confirmPassword", e.target.value)}
-                    />
-                  </div>
-
-                  {error && (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  {serverError && (
                     <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                      {error}
+                      {serverError}
                     </div>
                   )}
 
-                  {/* Terms */}
-                  <div className="flex items-start space-x-3 rounded-lg border border-border p-4">
-                    <Checkbox
-                      id="terms"
-                      checked={formData.acceptTerms}
-                      onCheckedChange={(checked) => updateForm("acceptTerms", checked as boolean)}
-                    />
-                    <label htmlFor="terms" className="text-sm text-foreground cursor-pointer">
-                      I agree to the{" "}
-                      <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
-                      {" "}and{" "}
-                      <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>.
-                      I confirm that I am authorized to register this company.
-                    </label>
+                  <div
+                    className={cn("space-y-6", step !== 1 && "hidden")}
+                    aria-hidden={step !== 1}
+                  >
+                      <FormField
+                        control={form.control}
+                        name="companyName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Company Name *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter company name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="tradeLicense"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Trade License Number *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter trade license number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="companyProof"
+                        render={() => (
+                          <FormItem>
+                            <FormLabel>Company Proof Document *</FormLabel>
+                            <p className="text-sm text-muted-foreground">
+                              Upload trade license or company registration (PDF, DOC, DOCX — max {MAX_PROOF_MB}MB)
+                            </p>
+                            <div className="flex items-center gap-4">
+                              <label
+                                className={cn(
+                                  "flex h-20 min-w-[140px] cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 hover:border-primary",
+                                  proofError ? "border-destructive" : "border-border bg-muted",
+                                )}
+                              >
+                                <input
+                                  type="file"
+                                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                  className="hidden"
+                                  onChange={handleProofChange}
+                                />
+                                {companyProofFile ? (
+                                  <>
+                                    <Check className="h-5 w-5 shrink-0 text-green-600" />
+                                    <span className="max-w-[100px] truncate text-sm font-medium">
+                                      {companyProofFile.name}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={clearProof}
+                                      className="rounded p-1 hover:bg-muted-foreground/20"
+                                      aria-label="Remove file"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <FileText className="h-6 w-6 shrink-0 text-muted-foreground" />
+                                    <span className="text-sm text-muted-foreground">Upload document</span>
+                                  </>
+                                )}
+                              </label>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name="industry"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Industry *</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select industry" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {industries.map((ind) => (
+                                    <SelectItem key={ind} value={ind.toLowerCase()}>
+                                      {ind}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="companySize"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Company Size *</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select size" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {companySizes.map((size) => (
+                                    <SelectItem key={size} value={size.toLowerCase()}>
+                                      {size}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name="country"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Country *</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select country" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {countries.map((country) => (
+                                    <SelectItem key={country} value={country.toLowerCase()}>
+                                      {country}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="city"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>City *</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter city" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="website"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Website (Optional)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://www.company.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Company Description</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Brief description of your company..."
+                                rows={3}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="logoFile"
+                        render={() => (
+                          <FormItem>
+                            <FormLabel>Company Logo (Optional)</FormLabel>
+                            <div className="flex items-center gap-4">
+                              <label
+                                className={cn(
+                                  "flex h-20 w-20 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary",
+                                  logoError ? "border-destructive" : "border-border bg-muted",
+                                )}
+                              >
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={handleLogoChange}
+                                />
+                                {logoFile ? (
+                                  <Check className="h-6 w-6 text-success" />
+                                ) : (
+                                  <Upload className="h-6 w-6 text-muted-foreground" />
+                                )}
+                              </label>
+                              <div className="text-sm text-muted-foreground">
+                                {logoFile ? logoFile.name : `PNG, JPG up to ${MAX_LOGO_MB}MB`}
+                              </div>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <Button type="button" className="w-full gap-2" onClick={goToStep2}>
+                        Continue
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
                   </div>
 
-                  <div className="flex gap-4">
-                    <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setStep(1)}>
-                      Back
-                    </Button>
-                    <Button
-                      className="flex-1 gap-2"
-                      onClick={handleSubmit}
-                      disabled={loading || uploadingProof || !formData.acceptTerms}
-                    >
-                      {loading || uploadingProof ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          Register Company
-                          <ArrowRight className="h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </>
-              )}
+                  <div
+                    className={cn("space-y-6", step !== 2 && "hidden")}
+                    aria-hidden={step !== 2}
+                  >
+                      <FormField
+                        control={form.control}
+                        name="contactName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contact Person Name *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Full name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-              <div className="text-center text-sm text-muted-foreground">
-                Already have an account?{" "}
-                <a href="/login/company" className="font-medium text-primary hover:underline">
-                  Login
-                </a>
-              </div>
+                      <FormField
+                        control={form.control}
+                        name="contactPosition"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Position/Title *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., HR Manager" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="contactEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email Address *</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="email"
+                                placeholder="contact@company.com"
+                                autoComplete="email"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="contactPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone / WhatsApp *</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="tel"
+                                placeholder="+971 50 123 4567"
+                                autoComplete="tel"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password *</FormLabel>
+                            <FormControl>
+                              <PasswordInput
+                                placeholder="Create a password (min 6 characters)"
+                                autoComplete="new-password"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm Password *</FormLabel>
+                            <FormControl>
+                              <PasswordInput
+                                placeholder="Confirm password"
+                                autoComplete="new-password"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="acceptTerms"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-border p-4">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={(c) => field.onChange(c === true)}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-snug">
+                              <FormLabel className="text-sm font-normal cursor-pointer">
+                                I agree to the{" "}
+                                <a href="/terms" className="text-primary hover:underline">
+                                  Terms of Service
+                                </a>{" "}
+                                and{" "}
+                                <a href="/privacy" className="text-primary hover:underline">
+                                  Privacy Policy
+                                </a>
+                                . I confirm that I am authorized to register this company.
+                              </FormLabel>
+                              <FormMessage />
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex gap-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1 bg-transparent"
+                          onClick={() => {
+                            setStep(1)
+                            setServerError("")
+                          }}
+                        >
+                          Back
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="flex-1 gap-2"
+                          disabled={loading || uploadingProof}
+                        >
+                          {loading || uploadingProof ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              Register Company
+                              <ArrowRight className="h-4 w-4" />
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                  </div>
+
+                  <div className="text-center text-sm text-muted-foreground">
+                    Already have an account?{" "}
+                    <a href="/login/company" className="font-medium text-primary hover:underline">
+                      Login
+                    </a>
+                  </div>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </div>

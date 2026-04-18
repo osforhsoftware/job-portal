@@ -291,7 +291,7 @@ export default function AdminPlansPage() {
                           <TableRow key={p.id}>
                             <TableCell className="font-medium">{p.name}</TableCell>
                             <TableCell>{p.level}</TableCell>
-                            <TableCell>${p.price}</TableCell>
+                            <TableCell>{p.price}</TableCell>
                             <TableCell>{p.features?.cvUploads === -1 ? "Unlimited" : p.features?.cvUploads ?? "-"}</TableCell>
                             <TableCell>{p.features?.biddingLimit === -1 ? "Unlimited" : p.features?.biddingLimit ?? "-"}</TableCell>
                             <TableCell>{p.features?.jobOffers === -1 ? "Unlimited" : p.features?.jobOffers ?? "-"}</TableCell>
@@ -339,7 +339,7 @@ export default function AdminPlansPage() {
                           <TableRow key={p.id}>
                             <TableCell className="font-medium">{p.name}</TableCell>
                             <TableCell>{p.level}</TableCell>
-                            <TableCell>${p.price}</TableCell>
+                            <TableCell>{p.price}</TableCell>
                             <TableCell>{p.features?.cvDownloads === -1 ? "Unlimited" : p.features?.cvDownloads ?? "-"}</TableCell>
                             <TableCell>
                               <Badge variant={p.isActive ? "default" : "secondary"}>{p.isActive ? "Active" : "Inactive"}</Badge>

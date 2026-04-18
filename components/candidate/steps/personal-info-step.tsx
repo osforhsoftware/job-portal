@@ -1,7 +1,15 @@
 "use client"
 
+import { useFormContext } from "react-hook-form"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { PasswordInput } from "@/components/ui/password-input"
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import {
   Select,
   SelectContent,
@@ -9,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { CandidateFormData } from "../registration-wizard"
+import type { CandidateRegisterFormValues } from "../candidate-register-schema"
 
 const nationalities = [
   "Indian", "Pakistani", "Filipino", "Bangladeshi", "Nepali", "Sri Lankan",
@@ -22,12 +30,9 @@ const genders = ["Male", "Female", "Prefer not to say"]
 
 const maritalStatuses = ["Single", "Married", "Divorced", "Widowed", "Prefer not to say"]
 
-interface PersonalInfoStepProps {
-  formData: CandidateFormData
-  updateFormData: (data: Partial<CandidateFormData>) => void
-}
+export function PersonalInfoStep() {
+  const form = useFormContext<CandidateRegisterFormValues>()
 
-export function PersonalInfoStep({ formData, updateFormData }: PersonalInfoStepProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -37,176 +42,218 @@ export function PersonalInfoStep({ formData, updateFormData }: PersonalInfoStepP
         </p>
       </div>
 
-      {/* Full Name */}
-      <div className="space-y-2">
-        <Label htmlFor="fullName">Full Name *</Label>
-        <Input
-          id="fullName"
-          placeholder="Enter your full name"
-          value={formData.fullName}
-          onChange={(e) => updateFormData({ fullName: e.target.value })}
-          required
-        />
-      </div>
+      <FormField
+        control={form.control}
+        name="fullName"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Full Name *</FormLabel>
+            <FormControl>
+              <Input placeholder="Enter your full name" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-      {/* Email */}
-      <div className="space-y-2">
-        <Label htmlFor="email">Email Address *</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="your@email.com"
-          value={formData.email}
-          onChange={(e) => updateFormData({ email: e.target.value })}
-          required
-        />
-      </div>
+      <FormField
+        control={form.control}
+        name="email"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Email Address *</FormLabel>
+            <FormControl>
+              <Input
+                type="email"
+                placeholder="your@email.com"
+                autoComplete="email"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-      {/* Password */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="password">Password *</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="Create a password (min 6 characters)"
-            value={formData.password}
-            onChange={(e) => updateFormData({ password: e.target.value })}
-            required
-            minLength={6}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirm Password *</Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            placeholder="Re-enter password"
-            value={formData.confirmPassword}
-            onChange={(e) => updateFormData({ confirmPassword: e.target.value })}
-            required
-            minLength={6}
-          />
-        </div>
-      </div>
-
-      {/* WhatsApp */}
-      <div className="space-y-2">
-        <Label htmlFor="whatsapp">WhatsApp Number *</Label>
-        <Input
-          id="whatsapp"
-          type="tel"
-          placeholder="+971 50 123 4567"
-          value={formData.whatsapp}
-          onChange={(e) => updateFormData({ whatsapp: e.target.value, phone: e.target.value })}
-          required
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password *</FormLabel>
+              <FormControl>
+                <PasswordInput
+                  placeholder="Create a password (min 6 characters)"
+                  autoComplete="new-password"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        <p className="text-xs text-muted-foreground">
-          Include country code (e.g., +971 for UAE)
-        </p>
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confirm Password *</FormLabel>
+              <FormControl>
+                <PasswordInput
+                  placeholder="Re-enter password"
+                  autoComplete="new-password"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
 
-      {/* Gender & Nationality */}
+      <FormField
+        control={form.control}
+        name="whatsapp"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>WhatsApp Number *</FormLabel>
+            <FormControl>
+              <Input
+                type="tel"
+                placeholder="+971 50 123 4567"
+                autoComplete="tel"
+                {...field}
+              />
+            </FormControl>
+            <p className="text-xs text-muted-foreground">
+              Include country code (e.g., +971 for UAE)
+            </p>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Gender *</Label>
-          <Select
-            value={formData.gender}
-            onValueChange={(value) => updateFormData({ gender: value })}
-            required
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select gender" />
-            </SelectTrigger>
-            <SelectContent>
-              {genders.map((gender) => (
-                <SelectItem key={gender} value={gender.toLowerCase()}>
-                  {gender}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Nationality *</Label>
-          <Select
-            value={formData.nationality}
-            onValueChange={(value) => updateFormData({ nationality: value })}
-            required
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select nationality" />
-            </SelectTrigger>
-            <SelectContent>
-              {nationalities.map((nat) => (
-                <SelectItem key={nat} value={nat.toLowerCase()}>
-                  {nat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Date of Birth */}
-      <div className="space-y-2">
-        <Label htmlFor="dateOfBirth">Date of Birth</Label>
-        <Input
-          id="dateOfBirth"
-          type="date"
-          value={formData.dateOfBirth}
-          onChange={(e) => updateFormData({ dateOfBirth: e.target.value })}
+        <FormField
+          control={form.control}
+          name="gender"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Gender *</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {genders.map((gender) => (
+                    <SelectItem key={gender} value={gender.toLowerCase()}>
+                      {gender}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="nationality"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nationality *</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select nationality" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {nationalities.map((nat) => (
+                    <SelectItem key={nat} value={nat.toLowerCase()}>
+                      {nat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
         />
       </div>
 
-      {/* Marital Status */}
-      <div className="space-y-2">
-        <Label>Marital Status</Label>
-        <Select
-          value={formData.maritalStatus}
-          onValueChange={(value) => updateFormData({ maritalStatus: value })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select status" />
-          </SelectTrigger>
-          <SelectContent>
-            {maritalStatuses.map((status) => (
-              <SelectItem key={status} value={status.toLowerCase()}>
-                {status}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FormField
+        control={form.control}
+        name="dateOfBirth"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Date of Birth</FormLabel>
+            <FormControl>
+              <Input type="date" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-      {/* Current Location */}
-      <div className="space-y-2">
-        <Label htmlFor="currentLocation">Current Location</Label>
-        <Input
-          id="currentLocation"
-          placeholder="e.g. Dubai, UAE"
-          value={formData.currentLocation}
-          onChange={(e) => updateFormData({ currentLocation: e.target.value })}
-        />
-      </div>
+      <FormField
+        control={form.control}
+        name="maritalStatus"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Marital Status</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {maritalStatuses.map((status) => (
+                  <SelectItem key={status} value={status.toLowerCase()}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-      {/* Preferred Locations */}
-      <div className="space-y-2">
-        <Label htmlFor="preferredLocations">Preferred job locations</Label>
-        <Input
-          id="preferredLocations"
-          placeholder="e.g. Dubai, Abu Dhabi, Sharjah (comma-separated)"
-          value={(formData.preferredLocations || []).join(", ")}
-          onChange={(e) =>
-            updateFormData({
-              preferredLocations: e.target.value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean),
-            })
-          }
-        />
-      </div>
+      <FormField
+        control={form.control}
+        name="currentLocation"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Current Location</FormLabel>
+            <FormControl>
+              <Input placeholder="e.g. Dubai, UAE" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="preferredLocationsInput"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Preferred job locations</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="e.g. Dubai, Abu Dhabi, Sharjah (comma-separated)"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   )
 }

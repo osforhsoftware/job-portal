@@ -10,7 +10,7 @@ import {
   Eye,
   Briefcase,
   MapPin,
-  DollarSign,
+  Wallet,
   Users,
   Building2,
   LayoutGrid,
@@ -133,7 +133,7 @@ function DemandDetailContent({ demand }: { demand: Demand }) {
           <div className="flex gap-3 p-4 rounded-lg border border-slate-200/60 bg-gradient-to-br from-emerald-50/80 to-slate-50/40 hover:border-emerald-300 hover:from-emerald-50/60 hover:to-slate-50/40 transition-all">
             {/* Icon with background */}
             <div className="flex-shrink-0 p-2.5 bg-emerald-100 rounded-lg group-hover:bg-emerald-200 group-hover:scale-110 transition-all">
-              <DollarSign className="h-4 w-4 text-emerald-600" />
+              <Wallet className="h-4 w-4 text-emerald-600" />
             </div>
             
             {/* Content */}
@@ -309,7 +309,7 @@ function GridCard({ d, onSelect, onClose, selected, detailOpen }: {
             </span>
           )}
           <span className="flex items-center gap-1.5">
-            <DollarSign className="h-3 w-3 shrink-0" />
+            <Wallet className="h-3 w-3 shrink-0" />
             {formatSalary(d.salary)}
           </span>
         </div>
@@ -398,7 +398,7 @@ function ListRow({ d, onSelect, onClose, selected, detailOpen }: {
             <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{d.companyName}</span>
               {d.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{d.location}</span>}
-              <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{formatSalary(d.salary)}</span>
+              <span className="flex items-center gap-1"><Wallet className="h-3 w-3" />{formatSalary(d.salary)}</span>
             </div>
           </div>
 

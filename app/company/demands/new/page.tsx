@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Check, Briefcase, Utensils, Home, Car, FileCheck, HeartPulse, MoreHorizontal, User, Users, Globe, Clock, CalendarClock, Calendar, X, Shield, CalendarDays, Tags, MapPin, DollarSign } from "lucide-react"
+import { Loader2, Check, Briefcase, Utensils, Home, Car, FileCheck, HeartPulse, MoreHorizontal, User, Users, Globe, Clock, CalendarClock, Calendar, X, Shield, CalendarDays, Tags, MapPin, Wallet } from "lucide-react"
 import { ALL_COUNTRIES } from "@/lib/countries"
 import { BenefitType, NationalityType, BENEFITS } from "@/lib/job-config"
 import { toast } from "sonner"
@@ -965,7 +965,7 @@ export default function CreateDemandPage() {
 
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <DollarSign className="h-3.5 w-3.5" />
+                    <Wallet className="h-3.5 w-3.5" />
                     Salary
                   </p>
                   <p className="min-w-0 text-right font-medium">

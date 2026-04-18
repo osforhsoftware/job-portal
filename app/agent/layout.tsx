@@ -10,7 +10,7 @@ import {
   Link2,
   Users,
   FileCheck,
-  DollarSign,
+  Wallet,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -31,7 +31,7 @@ const sidebarLinks = [
   { href: "/agent/referrals", label: "My Referrals", icon: Link2 },
   { href: "/agent/candidates", label: "My Candidates", icon: Users },
   { href: "/agent/applications", label: "Applications", icon: FileCheck },
-  { href: "/agent/commission", label: "Commission", icon: DollarSign },
+  { href: "/agent/commission", label: "Commission", icon: Wallet },
   { href: "/agent/settings", label: "Settings", icon: Settings },
 ]
 

@@ -86,12 +86,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!totalExperience || !qualification) {
+    if (!totalExperience) {
       return NextResponse.json(
-        { error: 'Experience and qualification required' },
+        { error: 'Experience is required' },
         { status: 400 }
       )
     }
+
+    const qualificationTrimmed = (qualification || '').trim()
 
     if (!cvFile) {
       return NextResponse.json({ error: 'CV required' }, { status: 400 })
@@ -211,7 +213,7 @@ export async function POST(request: NextRequest) {
       noticePeriod: '',
       industries: [],
       jobTypes: [],
-      highestEducation: qualification,
+      highestEducation: qualificationTrimmed,
       fieldOfStudy: '',
       skills: [],
       certifications: [],
@@ -256,7 +258,7 @@ export async function POST(request: NextRequest) {
       entityId: candidate.id,
       action: 'register',
       description: `New candidate "${fullName}" registered`,
-      metadata: { fullName, email, whatsapp, gender, nationality, jobCategories, totalExperience, qualification },
+      metadata: { fullName, email, whatsapp, gender, nationality, jobCategories, totalExperience, qualification: qualificationTrimmed },
       status: 'success',
       ip,
       userAgent: ua,

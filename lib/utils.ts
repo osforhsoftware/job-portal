@@ -26,3 +26,31 @@ export function formatRelativeTime(dateStr: string): string {
     year: 'numeric',
   })
 }
+
+/**
+ * Parse JSON from a fetch Response. Use instead of `response.json()` when the server might return
+ * an HTML error page (404/502) — otherwise the client throws "Unexpected token '<'".
+ */
+export async function parseJsonResponse<T = Record<string, unknown>>(
+  response: Response,
+): Promise<T> {
+  const text = await response.text()
+  const trimmed = text.trimStart()
+  if (trimmed.startsWith("<")) {
+    const hint =
+      response.status === 404
+        ? "Registration service was not found. Deploy the app with Next.js API routes enabled, or check the site URL."
+        : response.status >= 500
+          ? "Server error. Please try again later."
+          : `The server returned an unexpected page (HTTP ${response.status}).`
+    throw new Error(hint)
+  }
+  if (!trimmed) {
+    throw new Error("Empty response from server.")
+  }
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new Error("Invalid response from server.")
+  }
+}

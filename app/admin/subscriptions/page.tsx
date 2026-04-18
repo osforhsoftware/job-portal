@@ -481,7 +481,7 @@ export default function AdminSubscriptionsPage() {
                                   <TableCell className="font-medium">{s.entityName}</TableCell>
                                   <TableCell className="capitalize">{s.entityType}</TableCell>
                                   <TableCell>{s.plan}</TableCell>
-                                  <TableCell>${s.amount}</TableCell>
+                                  <TableCell>{s.amount}</TableCell>
                                   <TableCell>
                                     <Badge variant={statusVariant(s.status)}>{s.status}</Badge>
                                   </TableCell>

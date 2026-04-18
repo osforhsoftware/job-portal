@@ -19,7 +19,7 @@ import {
   Briefcase,
   Tags,
   MapPin,
-  DollarSign,
+  Wallet,
   Calendar,
   Clock,
   CalendarClock,
@@ -1167,7 +1167,7 @@ export default function CompanyDemandEditRequestPage() {
               </div>
               <div className="flex items-start justify-between gap-3">
                 <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <DollarSign className="h-3.5 w-3.5" />
+                  <Wallet className="h-3.5 w-3.5" />
                   Salary
                 </p>
                 <p className="min-w-0 text-right font-medium">

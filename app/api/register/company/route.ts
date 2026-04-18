@@ -4,6 +4,8 @@ import { hashPassword } from '@/lib/auth'
 import { apiError } from '@/lib/api-utils'
 import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
   const ua = getUserAgent(request)

@@ -11,7 +11,7 @@ import {
   Users,
   Building2,
   Briefcase,
-  DollarSign,
+  Wallet,
   TrendingUp,
   FileText,
   Video,
@@ -112,14 +112,14 @@ export default function AdminDashboard() {
     {
       title: "Active Bids",
       value: stats.totalBids,
-      icon: DollarSign,
+      icon: Wallet,
       color: "text-orange-600",
       bgColor: "bg-orange-100 dark:bg-orange-900/20",
       link: "/admin/bids",
     },
     {
       title: "Total Revenue",
-      value: `$${stats.totalRevenue.toLocaleString()}`,
+      value: stats.totalRevenue.toLocaleString(),
       icon: TrendingUp,
       color: "text-emerald-600",
       bgColor: "bg-emerald-100 dark:bg-emerald-900/20",
@@ -288,7 +288,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
                         <span className="text-muted-foreground">Revenue today</span>
-                        <span className="font-semibold">${(stats.revenueToday ?? 0).toLocaleString()}</span>
+                        <span className="font-semibold">{(stats.revenueToday ?? 0).toLocaleString()}</span>
                       </div>
                     </div>
                   </CardContent>

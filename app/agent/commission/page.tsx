@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DollarSign, TrendingUp, Briefcase } from "lucide-react"
+import { Wallet, TrendingUp, Briefcase } from "lucide-react"
 import { PageLoader } from "@/components/page-loader"
 
 interface PerDemand {
@@ -56,10 +56,10 @@ export default function AgentCommissionPage() {
         <Card>
           <CardContent className="flex items-center gap-4 pt-6">
             <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/20">
-              <DollarSign className="h-5 w-5 text-green-600" />
+              <Wallet className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">${totalEarnings.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{totalEarnings.toLocaleString()}</p>
               <p className="text-sm text-muted-foreground">Total Earnings</p>
             </div>
           </CardContent>
@@ -116,7 +116,7 @@ export default function AgentCommissionPage() {
                       <TableCell className="font-medium">{d.demandTitle}</TableCell>
                       <TableCell className="text-muted-foreground">{d.companyName}</TableCell>
                       <TableCell>{d.count}</TableCell>
-                      <TableCell className="font-medium text-green-600">${d.earnings.toLocaleString()}</TableCell>
+                      <TableCell className="font-medium text-green-600">{d.earnings.toLocaleString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -17,7 +17,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import {
   Eye,
   TrendingUp,
-  DollarSign,
+  Wallet,
   Building2,
   MapPin,
   Clock,
@@ -45,7 +45,7 @@ const stats = [
   { label: "Profile Views", value: "6000+", change: "+12%", icon: Eye },
   { label: "Active Bids", value: "8", change: "+3", icon: TrendingUp },
   { label: "Shortlisted", value: "15", change: "+5", icon: Heart },
-  { label: "Avg. Bid Amount", value: "$2,500", change: "+8%", icon: DollarSign },
+  { label: "Avg. Bid Amount", value: "2,500", change: "+8%", icon: Wallet },
 ]
 
 function formatBidDate(createdAt: string): string {
@@ -375,7 +375,7 @@ export default function CandidateDashboard() {
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <p className="text-lg font-bold text-foreground">
-                            ${bid.bidAmount.toLocaleString()}
+                            {bid.bidAmount.toLocaleString()}
                           </p>
                           <p className="text-xs text-muted-foreground">Monthly Salary</p>
                         </div>

@@ -3,13 +3,27 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { PasswordInput } from "@/components/ui/password-input"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, Loader2 } from "lucide-react"
+import {
+  emailPasswordLoginSchema,
+  type EmailPasswordLoginValues,
+} from "@/lib/validation/email-password-login"
 
 const ERROR_MESSAGES: Record<string, string> = {
   rejected: "Your agency has been rejected. You cannot sign in. Please contact your agency or support.",
@@ -21,55 +35,57 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default function AgencyLoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [serverError, setServerError] = useState("")
+
+  const form = useForm<EmailPasswordLoginValues>({
+    resolver: zodResolver(emailPasswordLoginSchema),
+    defaultValues: { email: "", password: "" },
+    mode: "onSubmit",
+  })
 
   useEffect(() => {
     const errorCode = searchParams.get("error")
     if (errorCode && ERROR_MESSAGES[errorCode]) {
-      setError(ERROR_MESSAGES[errorCode])
+      setServerError(ERROR_MESSAGES[errorCode])
     }
   }, [searchParams])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+  const onSubmit = async (values: EmailPasswordLoginValues) => {
+    setServerError("")
     setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: values.email, password: values.password }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || 'Login failed')
+        setServerError(data.error || "Login failed")
         setLoading(false)
         return
       }
 
-      if (data.user.role !== 'agency' && data.user.role !== 'agent') {
-        setError('Invalid account type')
+      if (data.user.role !== "agency" && data.user.role !== "agent") {
+        setServerError("Invalid account type")
         setLoading(false)
         return
       }
 
-      // Store user in localStorage
-      localStorage.setItem('user', JSON.stringify(data.user))
-      localStorage.setItem('token', 'agency_token_' + Date.now())
+      localStorage.setItem("user", JSON.stringify(data.user))
+      localStorage.setItem("token", `agency_token_${crypto.randomUUID()}`)
 
-      if (data.user.role === 'agent') {
-        router.push('/agent/dashboard')
+      if (data.user.role === "agent") {
+        router.push("/agent/dashboard")
       } else {
-        router.push('/agency/dashboard')
+        router.push("/agency/dashboard")
       }
-    } catch (err) {
-      setError('Network error. Please try again.')
+    } catch {
+      setServerError("Network error. Please try again.")
       setLoading(false)
     }
   }
@@ -89,69 +105,80 @@ export default function AgencyLoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="agency@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link
-                    href="/forgot-password?type=agency"
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Logging in...
-                  </>
-                ) : (
-                  'Login'
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                {serverError && (
+                  <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                    {serverError}
+                  </div>
                 )}
-              </Button>
 
-              <p className="text-center text-sm text-muted-foreground">
-                Don&apos;t have an account?{" "}
-                <Link href="/register/agency" className="text-primary hover:underline">
-                  Register here
-                </Link>
-              </p>
-            </form>
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="agency@example.com"
+                          autoComplete="email"
+                          disabled={loading}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Password</FormLabel>
+                        <Link
+                          href="/forgot-password?type=agency"
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
+                      <FormControl>
+                        <PasswordInput
+                          placeholder="Enter password"
+                          autoComplete="current-password"
+                          disabled={loading}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    "Login"
+                  )}
+                </Button>
+
+                <p className="text-center text-sm text-muted-foreground">
+                  Don&apos;t have an account?{" "}
+                  <Link href="/register/agency" className="text-primary hover:underline">
+                    Register here
+                  </Link>
+                </p>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </main>

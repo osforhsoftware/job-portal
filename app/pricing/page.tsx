@@ -24,8 +24,8 @@ const plans = [
   {
     id: "pro",
     name: "Pro Plan",
-    badge: "$8.00 / Month",
-    price: "$8",
+    badge: "8.00 / Month",
+    price: "8",
     priceSuffix: "/Month",
     subtitle: "For growing teams that hire regularly.",
     cta: "Go Pro Plan",
@@ -41,8 +41,8 @@ const plans = [
   {
     id: "team",
     name: "Team Plan",
-    badge: "$12.00 / Month",
-    price: "$12",
+    badge: "12.00 / Month",
+    price: "12",
     priceSuffix: "/Month",
     subtitle: "Best for larger hiring teams and HR orgs.",
     cta: "Get Started",

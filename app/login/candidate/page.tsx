@@ -3,67 +3,86 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Mail, Phone, ArrowRight, Briefcase, Loader2 } from "lucide-react"
+import {
+  emailPasswordLoginSchema,
+  type EmailPasswordLoginValues,
+} from "@/lib/validation/email-password-login"
 
 export default function CandidateLoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get("redirect") || "/candidate/dashboard"
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [phone, setPhone] = useState("")
   const [otp, setOtp] = useState("")
   const [otpSent, setOtpSent] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [serverError, setServerError] = useState("")
 
-  const handleEmailPasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+  const form = useForm<EmailPasswordLoginValues>({
+    resolver: zodResolver(emailPasswordLoginSchema),
+    defaultValues: { email: "", password: "" },
+    mode: "onSubmit",
+  })
+
+  const onSubmit = async (values: EmailPasswordLoginValues) => {
+    setServerError("")
     setLoading(true)
 
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, loginType: "candidate" }),
+        body: JSON.stringify({ email: values.email, password: values.password, loginType: "candidate" }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || "Login failed")
+        setServerError(data.error || "Login failed")
         setLoading(false)
         return
       }
 
       if (data.user.role !== "candidate") {
-        setError("This login is only for candidate accounts. Please use the correct portal for your role.")
+        setServerError(
+          "This login is only for candidate accounts. Please use the correct portal for your role.",
+        )
         setLoading(false)
         return
       }
 
       localStorage.setItem("user", JSON.stringify(data.user))
-      localStorage.setItem("token", "candidate_token_" + Date.now())
+      localStorage.setItem("token", `candidate_token_${crypto.randomUUID()}`)
 
       router.push(redirectTo.startsWith("/") ? redirectTo : "/candidate/dashboard")
     } catch {
-      setError("Network error. Please try again.")
+      setServerError("Network error. Please try again.")
       setLoading(false)
     }
   }
 
   const handleSendOtp = async () => {
     setLoading(true)
-    // Simulate OTP sending
     await new Promise((resolve) => setTimeout(resolve, 1500))
     setOtpSent(true)
     setLoading(false)
@@ -71,7 +90,6 @@ export default function CandidateLoginPage() {
 
   const handleVerifyOtp = async () => {
     setLoading(true)
-    // Simulate verification
     await new Promise((resolve) => setTimeout(resolve, 1500))
     setLoading(false)
     router.push("/candidate/profile")
@@ -93,11 +111,11 @@ export default function CandidateLoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-            {error && (
-              <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </p>
-            )}
+              {serverError && loginMethod === "email" && (
+                <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {serverError}
+                </p>
+              )}
               <Tabs defaultValue="email" onValueChange={(v) => setLoginMethod(v as "email" | "phone")}>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="email" className="gap-2">
@@ -111,50 +129,69 @@ export default function CandidateLoginPage() {
                 </TabsList>
 
                 <TabsContent value="email" className="mt-6 space-y-4">
-                  <form onSubmit={handleEmailPasswordLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email Address</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="email"
+                                placeholder="your@email.com"
+                                autoComplete="email"
+                                disabled={loading}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="password">Password</Label>
-                        <Link
-                          href="/forgot-password?type=candidate"
-                          className="text-xs text-primary hover:underline"
-                        >
-                          Forgot password?
-                        </Link>
-                      </div>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <div className="flex items-center justify-between">
+                              <FormLabel>Password</FormLabel>
+                              <Link
+                                href="/forgot-password?type=candidate"
+                                className="text-xs text-primary hover:underline"
+                              >
+                                Forgot password?
+                              </Link>
+                            </div>
+                            <FormControl>
+                              <PasswordInput
+                                placeholder="••••••••"
+                                autoComplete="current-password"
+                                disabled={loading}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <Button
-                      type="submit"
-                      className="w-full gap-2"
-                      disabled={loading || !email.trim() || !password}
-                    >
-                      {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          Sign in
-                          <ArrowRight className="h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
-                  </form>
+                      <Button
+                        type="submit"
+                        className="w-full gap-2"
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            Sign in
+                            <ArrowRight className="h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
                   <p className="text-center text-xs text-muted-foreground">
                     Registered via an agency? Use the email you signed up with. If you don’t have a password yet,
                     contact your agency or use the link below to set one.

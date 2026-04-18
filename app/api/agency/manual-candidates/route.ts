@@ -24,22 +24,31 @@ export async function POST(request: NextRequest) {
     const rawAgentId = (formData.get('agentId') as string | null)?.trim() || ''
     const rawAgencyId = (formData.get('agencyId') as string | null)?.trim() || ''
 
-    if (!rawAgentId) {
-      return NextResponse.json({ error: 'Agent is required' }, { status: 400 })
-    }
+    let agencyId: string
+    let agent: Awaited<ReturnType<typeof db.agents.getById>> = null
 
-    const agent = await db.agents.getById(rawAgentId)
-    if (!agent) {
-      return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
-    }
-
-    const agencyId = agent.agencyId
-    if (!agencyId) {
-      return NextResponse.json({ error: 'Agent is not linked to an agency' }, { status: 400 })
-    }
-
-    if (rawAgencyId && rawAgencyId !== agencyId) {
-      return NextResponse.json({ error: 'Agent does not belong to this agency' }, { status: 403 })
+    if (rawAgentId) {
+      const found = await db.agents.getById(rawAgentId)
+      if (!found) {
+        return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
+      }
+      agencyId = found.agencyId
+      if (!agencyId) {
+        return NextResponse.json({ error: 'Agent is not linked to an agency' }, { status: 400 })
+      }
+      if (rawAgencyId && rawAgencyId !== agencyId) {
+        return NextResponse.json({ error: 'Agent does not belong to this agency' }, { status: 403 })
+      }
+      agent = found
+    } else {
+      if (!rawAgencyId) {
+        return NextResponse.json({ error: 'agencyId is required' }, { status: 400 })
+      }
+      const agency = await db.agencies.getById(rawAgencyId)
+      if (!agency) {
+        return NextResponse.json({ error: 'Agency not found' }, { status: 404 })
+      }
+      agencyId = rawAgencyId
     }
 
     const firstName = (formData.get('firstName') as string | null)?.trim() || ''
@@ -163,7 +172,7 @@ export async function POST(request: NextRequest) {
 
     await db.candidateSources.create({
       candidateId: candidate.id,
-      agentId: agent.id,
+      ...(agent ? { agentId: agent.id } : {}),
       agencyId,
       sourceType: 'manual',
     })
@@ -183,7 +192,12 @@ export async function POST(request: NextRequest) {
       entityId: candidate.id,
       action: 'create',
       description: `Manual candidate created: ${firstName} ${lastName} (${email})`,
-      metadata: { candidateId: candidate.id, candidateName: `${firstName} ${lastName}`, candidateEmail: email, agentId: agent.id },
+      metadata: {
+        candidateId: candidate.id,
+        candidateName: `${firstName} ${lastName}`,
+        candidateEmail: email,
+        ...(agent ? { agentId: agent.id } : { assignedToAgencyOnly: true }),
+      },
       status: 'success',
       ip,
       userAgent: ua,

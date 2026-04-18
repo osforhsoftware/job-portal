@@ -366,12 +366,16 @@ export default function CandidatesPage() {
     setAgentFilter("all")
   }
 
+  function onAddDialogOpenChange(open: boolean) {
+    setAddOpen(open)
+    if (open) setSelectedAgentId("")
+  }
+
   // ── Create ──────────────────────────────────────────────────────────────────
   async function handleCreateCandidate(e: React.FormEvent) {
     e.preventDefault()
     setMessage(null)
     if (!form.jobCategoryId) { setMessage({ type: "error", text: "Select a job category" }); return }
-    if (!selectedAgentId)    { setMessage({ type: "error", text: "Select an agent" }); return }
     if (!cvFile)             { setMessage({ type: "error", text: "Upload a CV" }); return }
 
     setCreating(true)
@@ -386,7 +390,7 @@ export default function CandidatesPage() {
       if (form.skills.length)    fd.append("skill", form.skills.join(", "))
       fd.append("jobCategories", JSON.stringify([form.jobCategoryId]))
       fd.append("agencyId", agencyId)
-      fd.append("agentId", selectedAgentId)
+      if (selectedAgentId) fd.append("agentId", selectedAgentId)
       fd.append("cvUpload", cvFile)
 
       const res  = await fetch("/api/agency/manual-candidates", { method: "POST", body: fd })
@@ -463,7 +467,7 @@ export default function CandidatesPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">Manage your agency candidate database</p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="gap-2 h-9">
+        <Button onClick={() => onAddDialogOpenChange(true)} className="gap-2 h-9">
           <Plus className="h-4 w-4" /> Add Candidate
         </Button>
       </div>
@@ -654,7 +658,7 @@ export default function CandidatesPage() {
       </Card>
 
       {/* ── Add Candidate Modal ─────────────────────────────────────────────── */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={onAddDialogOpenChange}>
         <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0">
           <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
             <DialogHeader>
@@ -719,8 +723,15 @@ export default function CandidatesPage() {
                     {jobCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </NativeSelect>
                 </Field>
-                <Field label="Assign agent" required>
-                  <NativeSelect value={selectedAgentId} onChange={setSelectedAgentId} placeholder="Select agent" required>
+                <Field
+                  label="Assign agent"
+                  hint="Leave as agency account to assign the candidate to your agency only, or pick an agent."
+                >
+                  <NativeSelect
+                    value={selectedAgentId}
+                    onChange={setSelectedAgentId}
+                    placeholder="Agency account (no specific agent)"
+                  >
                     {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </NativeSelect>
                 </Field>

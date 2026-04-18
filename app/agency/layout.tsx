@@ -13,7 +13,7 @@ import {
   UserCog,
   FileCheck,
   FileSpreadsheet,
-  DollarSign,
+  Wallet,
   BarChart3,
   Settings,
   ChevronLeft,
@@ -36,7 +36,7 @@ const sidebarLinks = [
   { href: "/agency/referrals", label: "Referrals", icon: Link2 },
   { href: "/agency/agents", label: "Agents", icon: UserCog },
   { href: "/agency/applications", label: "Applications", icon: FileCheck },
-  { href: "/agency/commission", label: "Commission", icon: DollarSign },
+  { href: "/agency/commission", label: "Commission", icon: Wallet },
   { href: "/agency/reports", label: "Reports", icon: BarChart3 },
   { href: "/agency/settings", label: "Settings", icon: Settings },
 ]

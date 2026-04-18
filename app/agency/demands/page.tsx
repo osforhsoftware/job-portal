@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  Eye, Send, Briefcase, MapPin, DollarSign, Users,
+  Eye, Send, Briefcase, MapPin, Wallet, Users,
   Loader2, Building2, LayoutGrid, LayoutList, Table2,
   Calendar, ChevronRight, TrendingUp, Clock, UserCheck,
 } from "lucide-react"
@@ -263,7 +263,7 @@ function DetailDialog({
               <div className="group">
                 <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-blue-50 to-blue-50/50 rounded-lg border border-blue-200/50 hover:border-blue-300 transition-all">
                   <div className="flex-shrink-0 p-2.5 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
-                    <DollarSign className="h-4 w-4 text-blue-600" />
+                    <Wallet className="h-4 w-4 text-blue-600" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -674,7 +674,7 @@ export default function DemandsPage() {
                       <span className="truncate max-w-[100px]">{demand.location}</span>
                     </span>
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <DollarSign className="h-3 w-3 shrink-0" />{formatSalary(demand.salary)}
+                      <Wallet className="h-3 w-3 shrink-0" />{formatSalary(demand.salary)}
                     </span>
                     <DeadlineChip dateStr={demand.deadline} />
                   </div>
@@ -730,7 +730,7 @@ export default function DemandsPage() {
                           <MapPin className="h-3 w-3 shrink-0" />{demand.location}
                         </span>
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <DollarSign className="h-3 w-3 shrink-0" />{formatSalary(demand.salary)}
+                          <Wallet className="h-3 w-3 shrink-0" />{formatSalary(demand.salary)}
                         </span>
                         <DeadlineChip dateStr={demand.deadline} />
                       </div>

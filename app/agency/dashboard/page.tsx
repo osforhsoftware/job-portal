@@ -8,7 +8,7 @@ import {
   Briefcase,
   FileCheck,
   UserCheck,
-  DollarSign,
+  Wallet,
   CreditCard,
   Upload,
   TrendingUp,
@@ -18,6 +18,7 @@ import {
   ArrowUpRight,
   Sparkles,
   CheckCircle2,
+  Building2,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -145,15 +146,15 @@ export default function AgencyDashboard() {
   const revenueStats = [
     {
       title: "Commission Earned",
-      value: `$${(stats?.totalCommissionEarned || 0).toLocaleString()}`,
-      icon: DollarSign,
+      value: (stats?.totalCommissionEarned || 0).toLocaleString(),
+      icon: Wallet,
       iconWrap: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
       sub: "Lifetime earnings",
       href: "/agency/commission",
     },
     {
       title: "Pending Payments",
-      value: `$${(stats?.pendingPayments || 0).toLocaleString()}`,
+      value: (stats?.pendingPayments || 0).toLocaleString(),
       icon: CreditCard,
       iconWrap: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
       sub: "Awaiting clearance",
@@ -181,10 +182,18 @@ export default function AgencyDashboard() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Agency Dashboard</h1>
           <p className="text-sm text-muted-foreground">Welcome back — here’s your overview</p>
         </div>
-        <Badge variant="secondary" className="h-9 gap-1.5 px-3 text-sm font-semibold capitalize">
-          <Sparkles className="h-3.5 w-3.5" />
-          {stats?.subscriptionPlan || "Pro"}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2 bg-transparent" asChild>
+            <Link href="/register/company">
+              <Building2 className="h-4 w-4" />
+              Register as company
+            </Link>
+          </Button>
+          <Badge variant="secondary" className="h-9 gap-1.5 px-3 text-sm font-semibold capitalize">
+            <Sparkles className="h-3.5 w-3.5" />
+            {stats?.subscriptionPlan || "Pro"}
+          </Badge>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

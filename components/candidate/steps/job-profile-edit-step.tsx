@@ -1,18 +1,13 @@
-"use client"
+﻿"use client"
 
 import React, { useState, useRef, useCallback, useEffect } from "react"
-import { useFormContext } from "react-hook-form"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Slider } from "@/components/ui/slider"
 import {
   Select,
   SelectContent,
@@ -20,11 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Video,
   Upload,
+  Play,
   FileText,
   Check,
   X,
@@ -32,8 +26,7 @@ import {
   Square,
 } from "lucide-react"
 import { JobCategorySelector } from "../job-category-selector"
-import type { CandidateRegisterFormValues } from "../candidate-register-schema"
-import { cn } from "@/lib/utils"
+import type { CandidateFormData } from "../registration-wizard"
 
 const experienceYears = [
   "Fresher (0-1 years)",
@@ -57,29 +50,22 @@ const qualifications = [
   "Other"
 ]
 
-const MAX_DURATION = 60
-const MAX_CV_SIZE = 5 * 1024 * 1024
+const MAX_DURATION = 60 // 1 minute max
+const MAX_CV_SIZE = 5 * 1024 * 1024 // 5MB
 
-interface JobProfileStepProps {
-  cvFile: File | null
-  setCvFile: (file: File | null) => void
-  videoFile: File | null
-  setVideoFile: (file: File | null) => void
+interface JobProfileEditStepProps {
+  formData: CandidateFormData
+  updateFormData: (data: Partial<CandidateFormData>) => void
 }
 
-export function JobProfileStep({
-  cvFile,
-  setCvFile,
-  videoFile,
-  setVideoFile,
-}: JobProfileStepProps) {
-  const form = useFormContext<CandidateRegisterFormValues>()
+/** Profile edit flow (local state); registration uses `JobProfileStep` with react-hook-form. */
+export function JobProfileEditStep({ formData, updateFormData }: JobProfileEditStepProps) {
   const [videoMode, setVideoMode] = useState<"select" | "record" | "upload" | "preview">("select")
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [stream, setStream] = useState<MediaStream | null>(null)
-  const [mediaError, setMediaError] = useState<string | null>(null)
-
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
+  
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -87,40 +73,35 @@ export function JobProfileStep({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cvInputRef = useRef<HTMLInputElement>(null)
 
-  const salaryMin = form.watch("salaryMin")
-  const salaryMax = form.watch("salaryMax")
-  const cvDocError = form.formState.errors.cvDocument
-
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream
     }
   }, [stream])
 
+  const handleSalaryRangeChange = (values: number[]) => {
+    updateFormData({
+      salaryRange: { min: values[0], max: values[1] },
+    })
+  }
+
   const handleCVSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > MAX_CV_SIZE) {
-        form.setError("cvDocument", {
-          type: "manual",
-          message: `File too large. Maximum size is 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`,
-        })
+        alert(`File too large. Maximum size is 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`)
         return
       }
       if (file.type !== "application/pdf") {
-        form.setError("cvDocument", {
-          type: "manual",
-          message: "Please upload a PDF file only.",
-        })
+        alert("Please upload a PDF file only.")
         return
       }
-      form.clearErrors("cvDocument")
-      setCvFile(file)
+      updateFormData({ cvFile: file })
     }
   }
 
   const removeCV = () => {
-    setCvFile(null)
+    updateFormData({ cvFile: null })
     if (cvInputRef.current) {
       cvInputRef.current.value = ""
     }
@@ -133,7 +114,6 @@ export function JobProfileStep({
   }
 
   const startCamera = useCallback(async () => {
-    setMediaError(null)
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: 1280, height: 720 },
@@ -143,7 +123,7 @@ export function JobProfileStep({
       setVideoMode("record")
     } catch (err) {
       console.error("Error accessing camera:", err)
-      setMediaError("Unable to access camera. Please check permissions.")
+      alert("Unable to access camera. Please check permissions.")
     }
   }, [])
 
@@ -169,7 +149,7 @@ export function JobProfileStep({
 
     chunksRef.current = []
     const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" })
-
+    
     mediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) {
         chunksRef.current.push(e.data)
@@ -178,8 +158,9 @@ export function JobProfileStep({
 
     mediaRecorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: "video/webm" })
+      setRecordedBlob(blob)
       const file = new File([blob], "video-profile.webm", { type: "video/webm" })
-      setVideoFile(file)
+      updateFormData({ videoFile: file })
       setVideoMode("preview")
       stopCamera()
     }
@@ -198,23 +179,24 @@ export function JobProfileStep({
         return prev + 1
       })
     }, 1000)
-  }, [stream, stopCamera, setVideoFile, stopRecording])
+  }, [stream, stopCamera, updateFormData, stopRecording])
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setMediaError(null)
       if (file.size > 50 * 1024 * 1024) {
-        setMediaError("Video file too large. Maximum size is 50MB.")
+        alert("File too large. Maximum size is 50MB.")
         return
       }
-      setVideoFile(file)
+      updateFormData({ videoFile: file })
+      setRecordedBlob(file)
       setVideoMode("preview")
     }
   }
 
   const resetVideo = () => {
-    setVideoFile(null)
+    setRecordedBlob(null)
+    updateFormData({ videoFile: null })
     setVideoMode("select")
     setRecordingTime(0)
   }
@@ -234,177 +216,134 @@ export function JobProfileStep({
         </p>
       </div>
 
-      <FormField
-        control={form.control}
-        name="jobCategories"
-        render={({ field }) => (
-          <FormItem>
-            <JobCategorySelector
-              selectedCategories={field.value || []}
-              onSelectionChange={field.onChange}
-              required
-            />
-            <FormMessage />
-          </FormItem>
-        )}
+      {/* Job Category */}
+      <JobCategorySelector
+        selectedCategories={formData.jobCategories || []}
+        onSelectionChange={(categories) => updateFormData({ jobCategories: categories })}
+        required
       />
 
+      {/* Experience & Qualification */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField
-          control={form.control}
-          name="totalExperience"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Total Years Experience *</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select experience" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {experienceYears.map((exp) => (
-                    <SelectItem key={exp} value={exp.toLowerCase()}>
-                      {exp}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="qualification"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                Qualification{" "}
-                <span className="text-muted-foreground font-normal">(optional)</span>
-              </FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                value={field.value || undefined}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select qualification (optional)" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {qualifications.map((qual) => (
-                    <SelectItem key={qual} value={qual.toLowerCase()}>
-                      {qual}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="space-y-2">
+          <Label>Total Years Experience *</Label>
+          <Select
+            value={formData.totalExperience}
+            onValueChange={(value) => updateFormData({ totalExperience: value })}
+            required
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select experience" />
+            </SelectTrigger>
+            <SelectContent>
+              {experienceYears.map((exp) => (
+                <SelectItem key={exp} value={exp.toLowerCase()}>
+                  {exp}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Qualification *</Label>
+          <Select
+            value={formData.qualification}
+            onValueChange={(value) => updateFormData({ qualification: value })}
+            required
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select qualification" />
+            </SelectTrigger>
+            <SelectContent>
+              {qualifications.map((qual) => (
+                <SelectItem key={qual} value={qual.toLowerCase()}>
+                  {qual}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <FormField
-        control={form.control}
-        name="cvDocument"
-        render={() => (
-          <FormItem>
-            <FormLabel>Upload CV/Resume *</FormLabel>
-            <Card
-              className={cn(
-                "border-2 border-dashed p-6",
-                cvDocError ? "border-destructive" : "",
-              )}
-            >
-              <input
-                ref={cvInputRef}
-                type="file"
-                accept=".pdf"
-                className="hidden"
-                onChange={handleCVSelect}
-              />
-
-              {cvFile ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                      <FileText className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{cvFile.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatFileSize(cvFile.size)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/20">
-                      <Check className="h-4 w-4 text-success" />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={removeCV}
-                      type="button"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+      {/* CV Upload */}
+      <div className="space-y-2">
+        <Label>Upload CV/Resume *</Label>
+        <Card className="border-2 border-dashed p-6">
+          <input
+            ref={cvInputRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleCVSelect}
+          />
+          
+          {formData.cvFile ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                  <FileText className="h-6 w-6 text-primary" />
                 </div>
-              ) : (
-                <div
-                  className="flex cursor-pointer flex-col items-center justify-center py-6"
-                  onClick={() => cvInputRef.current?.click()}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      cvInputRef.current?.click()
-                    }
-                  }}
+                <div>
+                  <p className="font-medium text-foreground">{formData.cvFile.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatFileSize(formData.cvFile.size)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/20">
+                  <Check className="h-4 w-4 text-success" />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={removeCV}
+                  type="button"
                 >
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                    <Upload className="h-7 w-7 text-muted-foreground" />
-                  </div>
-                  <p className="mb-1 font-medium text-foreground">Upload CV/Resume *</p>
-                  <p className="text-sm text-muted-foreground">PDF only (Max 5MB)</p>
-                  <Button variant="outline" className="mt-4 bg-transparent" type="button">
-                    Choose File
-                  </Button>
-                </div>
-              )}
-            </Card>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="flex cursor-pointer flex-col items-center justify-center py-6"
+              onClick={() => cvInputRef.current?.click()}
+            >
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                <Upload className="h-7 w-7 text-muted-foreground" />
+              </div>
+              <p className="mb-1 font-medium text-foreground">Upload CV/Resume *</p>
+              <p className="text-sm text-muted-foreground">
+                PDF only (Max 5MB)
+              </p>
+              <Button variant="outline" className="mt-4 bg-transparent" type="button">
+                Choose File
+              </Button>
+            </div>
+          )}
+        </Card>
+      </div>
 
+      {/* Video Profile */}
       <div className="space-y-2">
         <Label>Record Video Self-Introduction (Optional)</Label>
         <p className="text-xs text-muted-foreground mb-4">
           Record a 1-minute video introducing yourself (optional)
         </p>
 
-        {mediaError && (
-          <p className="mb-4 text-sm text-destructive" role="alert">
-            {mediaError}
-          </p>
-        )}
-
+        {/* Video Tips */}
         <div className="rounded-lg bg-primary/5 p-4 mb-4">
           <h3 className="mb-2 text-sm font-medium text-foreground">Tips for a Great Video</h3>
           <ul className="space-y-1 text-xs text-muted-foreground">
-            <li>• Introduce yourself and mention your profession</li>
-            <li>• Highlight 2-3 key skills and achievements</li>
-            <li>• Speak clearly and maintain eye contact</li>
-            <li>• Good lighting and quiet background</li>
-            <li>• Keep it under 60 seconds</li>
+            <li>ΓÇó Introduce yourself and mention your profession</li>
+            <li>ΓÇó Highlight 2-3 key skills and achievements</li>
+            <li>ΓÇó Speak clearly and maintain eye contact</li>
+            <li>ΓÇó Good lighting and quiet background</li>
+            <li>ΓÇó Keep it under 60 seconds</li>
           </ul>
         </div>
 
+        {/* Video Mode Selection */}
         {videoMode === "select" && (
           <div className="grid gap-4 sm:grid-cols-2">
             <Card
@@ -446,6 +385,7 @@ export function JobProfileStep({
           </div>
         )}
 
+        {/* Recording Mode */}
         {videoMode === "record" && (
           <Card className="overflow-hidden">
             <div className="relative aspect-video bg-black">
@@ -457,6 +397,7 @@ export function JobProfileStep({
                 className="h-full w-full object-cover"
               />
 
+              {/* Recording Indicator */}
               {isRecording && (
                 <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-destructive px-3 py-1">
                   <Circle className="h-3 w-3 animate-pulse fill-current" />
@@ -464,12 +405,14 @@ export function JobProfileStep({
                 </div>
               )}
 
+              {/* Timer */}
               <div className="absolute right-4 top-4 rounded-full bg-black/50 px-3 py-1">
                 <span className="text-sm font-mono text-white">
                   {formatTime(recordingTime)} / {formatTime(MAX_DURATION)}
                 </span>
               </div>
 
+              {/* Progress Bar */}
               {isRecording && (
                 <div className="absolute bottom-0 left-0 right-0">
                   <Progress value={(recordingTime / MAX_DURATION) * 100} className="h-1 rounded-none" />
@@ -499,11 +442,12 @@ export function JobProfileStep({
           </Card>
         )}
 
-        {videoMode === "preview" && videoFile && (
+        {/* Preview Mode */}
+        {videoMode === "preview" && recordedBlob && (
           <Card className="overflow-hidden">
             <div className="relative aspect-video bg-black">
               <video
-                src={URL.createObjectURL(videoFile)}
+                src={URL.createObjectURL(recordedBlob)}
                 controls
                 className="h-full w-full object-cover"
               />
@@ -526,6 +470,7 @@ export function JobProfileStep({
         )}
       </div>
 
+      {/* Expected Salary Range */}
       <div className="space-y-4">
         <div>
           <Label className="text-base font-semibold">Expected Salary Range (Monthly) *</Label>
@@ -539,19 +484,14 @@ export function JobProfileStep({
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Minimum</span>
               <span className="font-medium">
-                {salaryMin || 500} AED / month
+                {formData.salaryRange?.min || 500} AED  / month
               </span>
             </div>
             <Slider
-              value={[salaryMin || 500]}
-              onValueChange={(values) => {
-                const next = values[0]
-                const max = form.getValues("salaryMax")
-                form.setValue("salaryMin", next, { shouldValidate: true, shouldDirty: true })
-                if (next > max) {
-                  form.setValue("salaryMax", next, { shouldValidate: true })
-                }
-              }}
+              value={[formData.salaryRange?.min || 500]}
+              onValueChange={(values) =>
+                handleSalaryRangeChange([values[0], formData.salaryRange?.max || 5000])
+              }
               min={500}
               max={10000}
               step={100}
@@ -563,19 +503,14 @@ export function JobProfileStep({
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Maximum</span>
               <span className="font-medium">
-                {salaryMax || 5000} AED / month
+                {formData.salaryRange?.max || 5000 } AED / month
               </span>
             </div>
             <Slider
-              value={[salaryMax || 5000]}
-              onValueChange={(values) => {
-                const next = values[0]
-                const min = form.getValues("salaryMin")
-                form.setValue("salaryMax", next, { shouldValidate: true, shouldDirty: true })
-                if (next < min) {
-                  form.setValue("salaryMin", next, { shouldValidate: true })
-                }
-              }}
+              value={[formData.salaryRange?.max || 5000]}
+              onValueChange={(values) =>
+                handleSalaryRangeChange([formData.salaryRange?.min || 500, values[0]])
+              }
               min={500}
               max={10000}
               step={100}
@@ -583,44 +518,36 @@ export function JobProfileStep({
             />
           </div>
 
-          <div className="mt-4 rounded-lg bg-primary/5 p-3 text-center">
-            <p className="text-sm font-medium text-foreground">
-              Salary Range: AED {(salaryMin || 500).toLocaleString()} - AED {(salaryMax || 5000).toLocaleString()} / month
-            </p>
-          </div>
-          {form.formState.errors.salaryMax?.message && (
-            <p className="text-sm text-destructive">{form.formState.errors.salaryMax.message}</p>
+          {formData.salaryRange && (
+            <div className="mt-4 rounded-lg bg-primary/5 p-3 text-center">
+              <p className="text-sm font-medium text-foreground">
+                Salary Range: AED {formData.salaryRange.min.toLocaleString()} - AED {formData.salaryRange.max.toLocaleString()} / month
+              </p>
+            </div>
           )}
         </div>
       </div>
 
-      <FormField
-        control={form.control}
-        name="acceptTerms"
-        render={({ field }) => (
-          <FormItem className="space-y-3 rounded-lg border p-4">
-            <div className="flex items-start space-x-3">
-              <FormControl>
-                <Checkbox
-                  id="terms"
-                  checked={field.value}
-                  onCheckedChange={(c) => field.onChange(c === true)}
-                />
-              </FormControl>
-              <div className="space-y-1">
-                <FormLabel htmlFor="terms" className="text-sm font-medium leading-snug cursor-pointer">
-                  I accept the Terms and Conditions and Privacy Policy *
-                </FormLabel>
-                <p className="text-xs text-muted-foreground">
-                  By checking this box, you agree to our terms of service and privacy policy.
-                  Please read them carefully before submitting your profile.
-                </p>
-                <FormMessage />
-              </div>
-            </div>
-          </FormItem>
-        )}
-      />
+      {/* Terms and Policies */}
+      <div className="space-y-3 rounded-lg border p-4">
+        <div className="flex items-start space-x-3">
+          <Checkbox
+            id="terms"
+            checked={formData.acceptTerms}
+            onCheckedChange={(checked) => updateFormData({ acceptTerms: checked === true })}
+            required
+          />
+          <div className="space-y-1">
+            <Label htmlFor="terms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              I accept the Terms and Conditions and Privacy Policy *
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              By checking this box, you agree to our terms of service and privacy policy. 
+              Please read them carefully before submitting your profile.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
