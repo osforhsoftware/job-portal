@@ -27,15 +27,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Candidate CV not found' }, { status: 404 })
     }
 
-    // Corporate companies always have unlimited access
-    const isCorporate = company.isCorporate
     const subscriptionPlan = company.subscriptionPlan ?? null
     const subscriptionStatus = company.subscriptionStatus ?? null
     const currentDownloads = company.totalCVDownloads ?? 0
 
     let limit: number | null = null
 
-    if (isCorporate) {
+    // Diamond plan (enterprise) and legacy isCorporate flag both grant unlimited access
+    const isDiamondOrCorporate =
+      company.isCorporate ||
+      (subscriptionPlan === 'diamond' && subscriptionStatus === 'active')
+
+    if (isDiamondOrCorporate) {
       limit = -1
     } else if (subscriptionPlan && subscriptionStatus === 'active') {
       const plans = await db.plans.getAll()
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
             : null
       }
     } else {
-      // Free tier: no CV downloads
+      // Free tier or inactive subscription: no CV downloads
       limit = 0
     }
 

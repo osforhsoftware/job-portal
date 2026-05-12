@@ -122,7 +122,7 @@ export default function AgencyLoginPage() {
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="agency@example.com"
+                          placeholder="Enter your email address"
                           autoComplete="email"
                           disabled={loading}
                           {...field}

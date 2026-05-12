@@ -142,6 +142,9 @@ export async function PATCH(request: NextRequest) {
       const sr = body.salaryRange
       updates.salaryRange = typeof sr?.min === 'number' && typeof sr?.max === 'number' ? { min: sr.min, max: sr.max } : undefined
     }
+    if (body.photoUrl !== undefined) {
+      updates.photoUrl = typeof body.photoUrl === 'string' ? body.photoUrl : undefined
+    }
 
     await db.candidates.update(candidateId, updates)
     const updated = await db.candidates.getById(candidateId)

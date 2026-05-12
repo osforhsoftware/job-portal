@@ -65,7 +65,7 @@ export function PersonalInfoStep() {
             <FormControl>
               <Input
                 type="email"
-                placeholder="your@email.com"
+                placeholder="Enter your email address"
                 autoComplete="email"
                 {...field}
               />

@@ -21,6 +21,7 @@ import {
   FileSpreadsheet,
   Activity,
   ClipboardList,
+  Trophy,
 } from "lucide-react"
 
 const navItems = [
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/admin/companies", label: "Companies", icon: Briefcase },
   { href: "/admin/bids", label: "Bids", icon: Wallet },
   { href: "/admin/revenue", label: "Revenue", icon: TrendingUp },
+  { href: "/admin/commission-rules", label: "Commission Rules", icon: Trophy },
   { href: "/admin/subscriptions", label: "Subscriptions", icon: FileText },
   { href: "/admin/interviews", label: "Interviews", icon: Video },
   { href: "/admin/plans", label: "Plans", icon: CreditCard },

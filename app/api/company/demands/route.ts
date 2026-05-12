@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       jobSubCategoryId,
     } = body as {
       companyId: string
-      companyName: string
+      companyName?: string
       roles: Array<{ jobTitle: string; quantity: number }>
       createdByUserId?: string
       createdByEmployeeName?: string
@@ -99,9 +99,9 @@ export async function POST(request: NextRequest) {
       jobSubCategoryId?: string
     }
 
-    if (!companyId || !companyName || !roles?.length) {
+    if (!companyId || !roles?.length) {
       return NextResponse.json(
-        { error: 'companyId, companyName, and roles (array of { jobTitle, positions }) are required' },
+        { error: 'companyId and roles (array of { jobTitle, positions }) are required' },
         { status: 400 }
       )
     }
@@ -111,7 +111,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 })
     }
 
-    const name = companyName || company.name
+    const name =
+      (typeof companyName === 'string' && companyName.trim()) || company.name
     const deadlineDate = deadline || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
     const created: Array<{ id: string; jobTitle: string; quantity: number }> = []

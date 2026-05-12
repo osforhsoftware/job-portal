@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CreditCard, ArrowLeft, Loader2, Plus, Pencil, Building2, Briefcase } from "lucide-react"
+import { CreditCard, ArrowLeft, Loader2, Plus, Pencil, Building2, Briefcase, Star, Zap } from "lucide-react"
 import { MessageBanner } from "@/components/ui/message-banner"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
@@ -44,7 +44,16 @@ type PlanRow = {
   type: "agency" | "company"
   level: string
   price: number
-  features: { cvUploads?: number; biddingLimit?: number; jobOffers?: number; cvDownloads?: number; unlimitedDownloads?: boolean }
+  yearlyPrice?: number
+  features: {
+    cvUploads?: number
+    biddingLimit?: number
+    jobOffers?: number
+    cvDownloads?: number
+    unlimitedDownloads?: boolean
+    prioritySupport?: boolean
+    advancedManagement?: boolean
+  }
   isActive: boolean
   createdAt: string
 }
@@ -218,7 +227,7 @@ export default function AdminPlansPage() {
   const agencyPlans = plans.filter((p) => p.type === "agency")
   const companyPlans = plans.filter((p) => p.type === "company")
   const agencyLevels = ["basic", "silver", "gold", "platinum"]
-  const companyLevels = ["bronze", "silver", "gold"]
+  const companyLevels = ["bronze", "silver", "gold", "diamond"]
 
   if (userRole === null) return null
 
@@ -317,7 +326,7 @@ export default function AdminPlansPage() {
                     <Briefcase className="h-5 w-5" />
                     Company plans
                   </CardTitle>
-                  <CardDescription>Plans for companies hiring talent</CardDescription>
+                  <CardDescription>Plans for companies hiring talent — Free, Bronze, Silver, Gold, Diamond (Enterprise)</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {companyPlans.length === 0 ? (
@@ -328,8 +337,10 @@ export default function AdminPlansPage() {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Level</TableHead>
-                          <TableHead>Price</TableHead>
+                          <TableHead>Monthly (AED)</TableHead>
+                          <TableHead>Yearly (AED)</TableHead>
                           <TableHead>CV downloads</TableHead>
+                          <TableHead>Features</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="w-[80px]">Actions</TableHead>
                         </TableRow>
@@ -337,10 +348,29 @@ export default function AdminPlansPage() {
                       <TableBody>
                         {companyPlans.map((p) => (
                           <TableRow key={p.id}>
-                            <TableCell className="font-medium">{p.name}</TableCell>
-                            <TableCell>{p.level}</TableCell>
-                            <TableCell>{p.price}</TableCell>
-                            <TableCell>{p.features?.cvDownloads === -1 ? "Unlimited" : p.features?.cvDownloads ?? "-"}</TableCell>
+                            <TableCell className="font-medium">
+                              <span className="flex items-center gap-1.5">
+                                {p.level === "diamond" && <Star className="h-3.5 w-3.5 text-violet-500" />}
+                                {p.name}
+                              </span>
+                            </TableCell>
+                            <TableCell className="capitalize">{p.level}</TableCell>
+                            <TableCell>{p.price > 0 ? `AED ${p.price}` : "Free"}</TableCell>
+                            <TableCell>{p.yearlyPrice ? `AED ${p.yearlyPrice}` : "—"}</TableCell>
+                            <TableCell>{p.features?.cvDownloads === -1 ? "Unlimited" : p.features?.cvDownloads ?? "—"}</TableCell>
+                            <TableCell>
+                              <span className="flex flex-wrap gap-1">
+                                {p.features?.prioritySupport && (
+                                  <Badge variant="outline" className="text-[10px]">Priority Support</Badge>
+                                )}
+                                {p.features?.advancedManagement && (
+                                  <Badge variant="outline" className="text-[10px]">Adv. Mgmt</Badge>
+                                )}
+                                {!p.features?.prioritySupport && !p.features?.advancedManagement && (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </span>
+                            </TableCell>
                             <TableCell>
                               <Badge variant={p.isActive ? "default" : "secondary"}>{p.isActive ? "Active" : "Inactive"}</Badge>
                             </TableCell>

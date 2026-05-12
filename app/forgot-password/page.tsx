@@ -88,15 +88,7 @@ function ForgotPasswordInner() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder={
-                      type === "company"
-                        ? "contact@company.com"
-                        : type === "candidate"
-                          ? "your@email.com"
-                          : type === "admin"
-                            ? "admin@example.com"
-                            : "agency@example.com"
-                    }
+                    placeholder="Enter your email address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

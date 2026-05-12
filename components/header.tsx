@@ -49,10 +49,17 @@ const navigation = [
   { name: "Contact Us", href: "/contact" },
 ]
 
-const languages = [
-  { code: "en", name: "English" },
-  { code: "ar", name: "العربية" },
-  { code: "hi", name: "हिन्दी" },
+/**
+ * Header language menu: entries drive both desktop dropdown and mobile grid.
+ * Options are commented out until app copy is internationalized (e.g. next-intl + locale routes).
+ * When enabled, keep codes aligned with your i18n locale ids; `language` state is UI-only for now.
+ */
+type HeaderLanguageOption = { code: string; name: string }
+
+const languages: HeaderLanguageOption[] = [
+  // { code: "en", name: "English" },
+  // { code: "ar", name: "العربية" },
+  // { code: "hi", name: "हिन्दी" },
 ]
 
 /** User menu: profile hub (edit available from profile page) */
@@ -149,6 +156,7 @@ export function Header() {
   const router = useRouter()
   const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(false)
+  /** Shown next to the globe; not persisted — wire to i18n / cookie when locales go live */
   const [language, setLanguage] = useState("en")
   const [user, setUser] = useState<{
     id?: string
@@ -224,7 +232,7 @@ export function Header() {
 
         {/* Desktop Actions */}
         <div className="hidden items-center gap-2 lg:flex">
-          {/* Language Selector */}
+          {/* Language: trigger always shows current code; menu items come from `languages` (empty until i18n) */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-1">
@@ -482,7 +490,7 @@ export function Header() {
                   ))}
                 </nav>
 
-                {/* Language Selector Mobile */}
+                {/* Same `languages` list as desktop; grid shows up to four options */}
                 <div className="border-t border-border pt-4">
                   <p className="mb-2 px-4 text-xs font-medium uppercase text-muted-foreground">
                     Language
@@ -492,11 +500,10 @@ export function Header() {
                       <button
                         key={lang.code}
                         onClick={() => setLanguage(lang.code)}
-                        className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                          language === lang.code
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary text-secondary-foreground hover:bg-accent"
-                        }`}
+                        className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${language === lang.code
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-accent"
+                          }`}
                       >
                         {lang.name}
                       </button>

@@ -23,6 +23,7 @@ export async function GET() {
       createdAt: d.createdAt,
       joining: d.joining,
       companyName: d.companyName,
+      createdByEmployeeName: d.createdByEmployeeName,
       quantity: d.quantity,
       filledPositions: d.filledPositions,
       status: d.status,

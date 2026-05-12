@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, Loader2, CheckCircle, Upload, FileText, X, Clock } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
@@ -34,6 +35,9 @@ const agencyRegisterSchema = z
     password: z.string().min(1, "Password is required").min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
     proofDocument: z.string().optional(),
+    acceptTerms: z.boolean().refine((v) => v === true, {
+      message: "You must accept the terms and privacy policy",
+    }),
   })
   .superRefine((data, ctx) => {
     if (data.password !== data.confirmPassword) {
@@ -48,7 +52,7 @@ const agencyRegisterSchema = z
 type AgencyRegisterValues = z.infer<typeof agencyRegisterSchema>
 
 export default function AgencyRegisterPage() {
-  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [proofFile, setProofFile] = useState<File | null>(null) 
   const [uploading, setUploading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState("")
@@ -64,6 +68,7 @@ export default function AgencyRegisterPage() {
       password: "",
       confirmPassword: "",
       proofDocument: "",
+      acceptTerms: false,
     },
     mode: "onSubmit",
   })
@@ -258,7 +263,7 @@ export default function AgencyRegisterPage() {
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="agency@example.com"
+                          placeholder="Enter your email address"
                           autoComplete="email"
                           disabled={loading}
                           {...field}
@@ -395,6 +400,41 @@ export default function AgencyRegisterPage() {
                         />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="acceptTerms"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(c) => field.onChange(c === true)}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-snug">
+                        <FormLabel className="text-sm font-normal cursor-pointer">
+                          I agree to the{" "}
+                          <a href="/terms" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                            Terms of Service
+                          </a>
+                          {" "}and{" "}
+                          <a href="/privacy" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                            Privacy Policy
+                          </a>
+                          . I confirm that I am authorised to register this agency. *
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          By registering you also agree to our{" "}
+                          <a href="/acceptable-use" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                            Acceptable Use Policy
+                          </a>.
+                        </p>
+                        <FormMessage />
+                      </div>
                     </FormItem>
                   )}
                 />

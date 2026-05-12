@@ -24,6 +24,7 @@ import {
   X,
   Sun,
   Moon,
+  Trophy,
 } from "lucide-react"
 import { DashboardNotificationBell } from "@/components/dashboard-notification-bell"
 import { BrandLogo } from "@/components/brand-logo"
@@ -37,6 +38,7 @@ const sidebarLinks = [
   { href: "/agency/agents", label: "Agents", icon: UserCog },
   { href: "/agency/applications", label: "Applications", icon: FileCheck },
   { href: "/agency/commission", label: "Commission", icon: Wallet },
+  { href: "/agency/performance", label: "Performance", icon: Trophy },
   { href: "/agency/reports", label: "Reports", icon: BarChart3 },
   { href: "/agency/settings", label: "Settings", icon: Settings },
 ]

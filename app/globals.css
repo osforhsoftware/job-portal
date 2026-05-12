@@ -90,8 +90,10 @@
 }
 
 @theme inline {
-  --font-sans: 'Inter', 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  /* Premium clean: Helvetica Bold (700) for headings, Regular (400) for body — system stack */
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, 'Nimbus Sans L', 'Liberation Sans', sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', 'Liberation Mono', Menlo, Monaco, Consolas, monospace;
   --color-brand-navy: var(--brand-navy);
   --color-brand-green: var(--brand-green);
   --color-brand-teal: var(--brand-teal);
@@ -142,7 +144,16 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans font-normal;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: inherit;
+    font-weight: 700;
   }
 }
 

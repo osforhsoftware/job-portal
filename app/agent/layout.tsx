@@ -21,6 +21,7 @@ import {
   Briefcase,
   Sun,
   Moon,
+  Trophy,
 } from "lucide-react"
 import { DashboardNotificationBell } from "@/components/dashboard-notification-bell"
 import { BrandLogo } from "@/components/brand-logo"
@@ -32,6 +33,7 @@ const sidebarLinks = [
   { href: "/agent/candidates", label: "My Candidates", icon: Users },
   { href: "/agent/applications", label: "Applications", icon: FileCheck },
   { href: "/agent/commission", label: "Commission", icon: Wallet },
+  { href: "/agent/performance", label: "Performance", icon: Trophy },
   { href: "/agent/settings", label: "Settings", icon: Settings },
 ]
 

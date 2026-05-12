@@ -28,8 +28,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { MessageBanner } from "@/components/ui/message-banner"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { toast } from "sonner"
 import {
   Search,
   Edit,
@@ -42,9 +42,11 @@ import {
   ChevronDown,
   Eye,
   FilterX,
+  Check,
 } from "lucide-react"
 import { PageLoader } from "@/components/page-loader"
-import { cn } from "@/lib/utils"
+import { cn, formatCandidateName } from "@/lib/utils"
+import { ALL_COUNTRIES } from "@/lib/countries"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,7 +63,6 @@ interface CandidateRow {
   currentJobTitle?: string
   currentLocation: string
   createdAt: string
-  // Optional extra fields for detail view
   dateOfBirth?: string
   gender?: string
   nationality?: string
@@ -71,18 +72,29 @@ interface CandidateRow {
   visaValidity?: string
   languages?: string[]
   remarks?: string
+  jobCategoryName?: string
+  jobSubCategoryName?: string
+  cvUrl?: string
 }
 
-interface JobCategoryOption { id: string; name: string }
-interface AgentOption       { id: string; name: string }
+/** Active job sub-category with parent label for the Add Candidate dropdown */
+interface JobSubCategoryOption {
+  id: string
+  name: string
+  categoryId: string
+  categoryName: string
+}
+interface AgentOption { id: string; name: string }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const EMPTY_FORM = {
-  firstName: "", lastName: "", email: "", phone: "",
+  fullName: "", email: "", phone: "",
   dateOfBirth: "", gender: "", nationality: "",
-  jobCategoryId: "", currentSalary: "", salaryExpectation: "",
-  currentLocation: "", maritalStatus: "", visaValidity: "", remarks: "",
+  jobSubCategoryIds: [] as string[],   // ← now an array
+  currentSalary: "", salaryExpectation: "",
+  country: "", city: "",
+  maritalStatus: "", visaValidity: "", remarks: "",
   skills: [] as string[],
   languages: [] as string[],
 }
@@ -254,8 +266,220 @@ function TagInput({
   )
 }
 
+// ─── NEW: Searchable Multi-Select for Job Sub-Categories ──────────────────────
+
+function SubCategoryMultiSelect({
+  options,
+  selectedIds,
+  onChange,
+  placeholder = "Search and select sub-categories…",
+  required,
+}: {
+  options: JobSubCategoryOption[]
+  selectedIds: string[]
+  onChange: (ids: string[]) => void
+  placeholder?: string
+  required?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState("")
+  const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Group filtered options by category
+  const filtered = options.filter(o => {
+    const q = search.toLowerCase()
+    return (
+      o.name.toLowerCase().includes(q) ||
+      o.categoryName.toLowerCase().includes(q)
+    )
+  })
+
+  const grouped = filtered.reduce<Record<string, JobSubCategoryOption[]>>((acc, o) => {
+    if (!acc[o.categoryName]) acc[o.categoryName] = []
+    acc[o.categoryName].push(o)
+    return acc
+  }, {})
+
+  function toggle(id: string) {
+    if (selectedIds.includes(id)) {
+      onChange(selectedIds.filter(s => s !== id))
+    } else {
+      onChange([...selectedIds, id])
+    }
+  }
+
+  function removeById(id: string) {
+    onChange(selectedIds.filter(s => s !== id))
+  }
+
+  function getLabel(id: string) {
+    const opt = options.find(o => o.id === id)
+    return opt ? opt.name : id
+  }
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false)
+        setSearch("")
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Trigger box */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => {
+          setOpen(o => !o)
+          setTimeout(() => inputRef.current?.focus(), 50)
+        }}
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") setOpen(o => !o) }}
+        className={cn(
+          "min-h-9 w-full rounded-md border border-input bg-background px-2.5 py-1.5",
+          "flex flex-wrap gap-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring",
+          open && "ring-2 ring-ring",
+        )}
+      >
+        {selectedIds.length === 0 ? (
+          <span className="text-sm text-muted-foreground self-center py-0.5">{placeholder}</span>
+        ) : (
+          selectedIds.map(id => (
+            <span
+              key={id}
+              className="inline-flex items-center gap-1 bg-primary/10 text-primary rounded-md px-2 py-0.5 text-xs font-medium"
+            >
+              {getLabel(id)}
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); removeById(id) }}
+                className="text-primary/60 hover:text-primary transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))
+        )}
+        <ChevronDown className={cn(
+          "ml-auto self-center h-3.5 w-3.5 text-muted-foreground flex-shrink-0 transition-transform",
+          open && "rotate-180",
+        )} />
+      </div>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 top-full mt-1 w-full rounded-md border border-border bg-popover shadow-lg overflow-hidden">
+          {/* Search input */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+            <Search className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <input
+              ref={inputRef}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search categories or roles…"
+              className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
+              onKeyDown={e => { if (e.key === "Escape") { setOpen(false); setSearch("") } }}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Options list */}
+          <div className="max-h-56 overflow-y-auto py-1">
+            {Object.keys(grouped).length === 0 ? (
+              <p className="px-3 py-4 text-sm text-muted-foreground text-center">No results found</p>
+            ) : (
+              Object.entries(grouped).map(([category, items]) => (
+                <div key={category}>
+                  {/* Category header */}
+                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground bg-muted/40 sticky top-0">
+                    {category}
+                  </div>
+                  {/* Sub-category items */}
+                  {items.map(item => {
+                    const isSelected = selectedIds.includes(item.id)
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); toggle(item.id) }}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors",
+                          "hover:bg-accent hover:text-accent-foreground",
+                          isSelected && "bg-primary/5",
+                        )}
+                      >
+                        {/* Checkbox indicator */}
+                        <span className={cn(
+                          "flex-shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors",
+                          isSelected
+                            ? "bg-primary border-primary"
+                            : "border-input bg-background",
+                        )}>
+                          {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={3} />}
+                        </span>
+                        <span className={cn(isSelected && "font-medium")}>{item.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Footer: count + clear */}
+          {selectedIds.length > 0 && (
+            <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30">
+              <span className="text-xs text-muted-foreground">
+                {selectedIds.length} selected
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Hidden native input for required validation */}
+      {required && (
+        <input
+          tabIndex={-1}
+          required
+          value={selectedIds.length ? selectedIds[0] : ""}
+          onChange={() => {}}
+          className="sr-only"
+          aria-hidden
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+
 function Avatar({ firstName = "", lastName = "" }: { firstName?: string; lastName?: string }) {
-  const initials = `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase()
+  const full = formatCandidateName(firstName, lastName)
+  const parts = full.split(/\s+/)
+  const initials = parts.length > 1
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    : (parts[0][0] ?? "").toUpperCase()
   return (
     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold select-none">
       {initials}
@@ -273,7 +497,6 @@ export default function CandidatesPage() {
   const [sourceFilter, setSourceFilter] = useState("all")
   const [agentFilter, setAgentFilter]   = useState("all")
   const [agencyId, setAgencyId]     = useState("")
-  const [message, setMessage]       = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   // Add dialog
   const [addOpen, setAddOpen]       = useState(false)
@@ -281,13 +504,18 @@ export default function CandidatesPage() {
   const [selectedAgentId, setSelectedAgentId] = useState("")
   const [cvFile, setCvFile]         = useState<File | null>(null)
   const [creating, setCreating]     = useState(false)
-  const [jobCategories, setJobCategories] = useState<JobCategoryOption[]>([])
+  const [jobSubCategoryOptions, setJobSubCategoryOptions] = useState<JobSubCategoryOption[]>([])
   const [agents, setAgents]         = useState<AgentOption[]>([])
 
   // Edit dialog
   const [editCandidate, setEditCandidate] = useState<CandidateRow | null>(null)
   const [editOpen, setEditOpen]     = useState(false)
   const [editSkillTags, setEditSkillTags] = useState<string[]>([])
+  const [editLanguageTags, setEditLanguageTags] = useState<string[]>([])
+  const [editFullName, setEditFullName] = useState("")
+  const [editCountry, setEditCountry] = useState("")
+  const [editCity, setEditCity]     = useState("")
+  const [editCvFile, setEditCvFile] = useState<File | null>(null)
   const [saving, setSaving]         = useState(false)
 
   // Delete
@@ -311,9 +539,43 @@ export default function CandidatesPage() {
     setAgencyId(aid)
     loadCandidates(aid)
 
-    fetch("/api/admin/job-categories").then(r => r.json()).then(d => {
-      if (d.categories) setJobCategories(d.categories.map((c: any) => ({ id: c.id, name: c.name })))
-    }).catch(console.error)
+    Promise.all([
+      fetch("/api/admin/job-categories").then(r => r.json()),
+      fetch("/api/admin/job-sub-categories").then(r => r.json()),
+    ])
+      .then(([catRes, subRes]) => {
+        const categories = (catRes.categories || []) as { id: string; name: string; isActive?: boolean }[]
+        const catMap = new Map(categories.map(c => [c.id, c]))
+        const subs = (subRes.subCategories || []) as {
+          id: string
+          name: string
+          categoryId: string
+          isActive?: boolean
+        }[]
+        const options: JobSubCategoryOption[] = subs
+          .filter(s => {
+            if (s.isActive === false) return false
+            const parent = catMap.get(s.categoryId)
+            if (!parent || parent.isActive === false) return false
+            return true
+          })
+          .map(s => {
+            const parent = catMap.get(s.categoryId)!
+            return {
+              id: s.id,
+              name: s.name,
+              categoryId: s.categoryId,
+              categoryName: parent.name,
+            }
+          })
+          .sort((a, b) => {
+            const byParent = a.categoryName.localeCompare(b.categoryName)
+            if (byParent !== 0) return byParent
+            return a.name.localeCompare(b.name)
+          })
+        setJobSubCategoryOptions(options)
+      })
+      .catch(console.error)
 
     fetch(`/api/agency/agents?agencyId=${aid}`).then(r => r.json()).then(d => {
       if (d.success && d.agents) setAgents(d.agents.map((a: any) => ({ id: a.id, name: a.name })))
@@ -325,7 +587,8 @@ export default function CandidatesPage() {
       const res  = await fetch(`/api/agency/candidates?agencyId=${aid}`)
       const data = await res.json()
       if (data.success) setCandidates(data.candidates)
-    } catch { setMessage({ type: "error", text: "Failed to load candidates" }) }
+      else toast.error(data.error || "Failed to load candidates")
+    } catch { toast.error("Failed to load candidates") }
     finally  { setLoading(false) }
   }
 
@@ -334,7 +597,7 @@ export default function CandidatesPage() {
     const q = search.trim().toLowerCase()
     const matchSearch =
       !q ||
-      `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
+      formatCandidateName(c.firstName, c.lastName).toLowerCase().includes(q) ||
       (c.email && c.email.toLowerCase().includes(q)) ||
       (c.phone && c.phone.toLowerCase().includes(q)) ||
       (c.currentLocation && c.currentLocation.toLowerCase().includes(q)) ||
@@ -374,34 +637,53 @@ export default function CandidatesPage() {
   // ── Create ──────────────────────────────────────────────────────────────────
   async function handleCreateCandidate(e: React.FormEvent) {
     e.preventDefault()
-    setMessage(null)
-    if (!form.jobCategoryId) { setMessage({ type: "error", text: "Select a job category" }); return }
-    if (!cvFile)             { setMessage({ type: "error", text: "Upload a CV" }); return }
+    if (!form.fullName.trim()) { toast.error("Enter the candidate's full name"); return }
+    if (!form.email?.trim() || !form.phone?.trim()) {
+      toast.error("Email and phone are required")
+      return
+    }
+    if (!form.jobSubCategoryIds.length) { toast.error("Select at least one job sub-category"); return }
+    if (!cvFile)             { toast.error("Upload a CV"); return }
+    if (!agencyId)           { toast.error("Agency not found. Please log in again."); return }
 
     setCreating(true)
     try {
       const fd = new FormData()
-      const textFields = [
-        "firstName","lastName","email","phone","dateOfBirth","gender","nationality",
-        "currentLocation","maritalStatus","currentSalary","salaryExpectation","visaValidity","remarks",
-      ] as const
-      textFields.forEach(k => { if (form[k]) fd.append(k, form[k] as string) })
+      const nameParts = form.fullName.trim().split(/\s+/)
+      const firstName = nameParts[0] || ""
+      const lastName = nameParts.slice(1).join(" ")
+      const currentLocation = [form.city, form.country].filter(Boolean).join(", ")
+      fd.append("firstName", firstName)
+      if (lastName) fd.append("lastName", lastName)
+      if (form.email) fd.append("email", form.email)
+      if (form.phone) fd.append("phone", form.phone)
+      if (form.dateOfBirth) fd.append("dateOfBirth", form.dateOfBirth)
+      if (form.gender) fd.append("gender", form.gender)
+      if (form.nationality) fd.append("nationality", form.nationality)
+      if (currentLocation) fd.append("currentLocation", currentLocation)
+      if (form.maritalStatus) fd.append("maritalStatus", form.maritalStatus)
+      if (form.currentSalary) fd.append("currentSalary", form.currentSalary)
+      if (form.salaryExpectation) fd.append("salaryExpectation", form.salaryExpectation)
+      if (form.visaValidity) fd.append("visaValidity", form.visaValidity)
+      if (form.remarks) fd.append("remarks", form.remarks)
       if (form.languages.length) fd.append("languages", form.languages.join(", "))
       if (form.skills.length)    fd.append("skill", form.skills.join(", "))
-      fd.append("jobCategories", JSON.stringify([form.jobCategoryId]))
+      // Send all selected sub-category IDs
+      fd.append("jobCategories", JSON.stringify(form.jobSubCategoryIds))
       fd.append("agencyId", agencyId)
       if (selectedAgentId) fd.append("agentId", selectedAgentId)
       fd.append("cvUpload", cvFile)
 
       const res  = await fetch("/api/agency/manual-candidates", { method: "POST", body: fd })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.success) {
-        setMessage({ type: "error", text: data.error || "Failed to create candidate" }); return
+        toast.error(typeof data?.error === "string" ? data.error : "Failed to create candidate")
+        return
       }
-      setMessage({ type: "success", text: "Candidate created" })
+      toast.success("Candidate created")
       setAddOpen(false); setForm(EMPTY_FORM); setCvFile(null); setSelectedAgentId("")
       loadCandidates(agencyId)
-    } catch { setMessage({ type: "error", text: "Failed to create candidate" }) }
+    } catch { toast.error("Failed to create candidate") }
     finally   { setCreating(false) }
   }
 
@@ -409,32 +691,73 @@ export default function CandidatesPage() {
   function openEdit(c: CandidateRow) {
     setEditCandidate({ ...c })
     setEditSkillTags([...(c.skills ?? [])])
+    setEditLanguageTags([...(c.languages ?? [])])
+    setEditFullName(formatCandidateName(c.firstName, c.lastName))
+    const locParts = (c.currentLocation || "").split(",").map((s: string) => s.trim())
+    if (locParts.length >= 2) {
+      setEditCity(locParts.slice(0, -1).join(", "))
+      setEditCountry(locParts[locParts.length - 1])
+    } else {
+      setEditCity(locParts[0] || "")
+      setEditCountry("")
+    }
+    setEditCvFile(null)
     setEditOpen(true)
   }
 
   async function handleSaveEdit() {
     if (!editCandidate) return
-    setMessage(null); setSaving(true)
+    setSaving(true)
     try {
-      const res  = await fetch(`/api/agency/candidate/${editCandidate.id}`, {
+      // Upload new CV first if provided
+      let cvUrl = editCandidate.cvUrl
+      if (editCvFile) {
+        const fd = new FormData()
+        fd.append("cvUpload", editCvFile)
+        const cvRes  = await fetch(`/api/agency/candidate/${editCandidate.id}/cv`, { method: "POST", body: fd })
+        const cvData = await cvRes.json()
+        if (!cvRes.ok || !cvData.success) {
+          toast.error(cvData.error || "CV upload failed")
+          setSaving(false); return
+        }
+        cvUrl = cvData.cvUrl
+      }
+
+      const nameParts = editFullName.trim().split(/\s+/)
+      const firstName = nameParts[0] || editCandidate.firstName
+      const lastName = nameParts.slice(1).join(" ")
+      const currentLocation = [editCity, editCountry].filter(Boolean).join(", ")
+
+      const res = await fetch(`/api/agency/candidate/${editCandidate.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName:       editCandidate.firstName,
-          lastName:        editCandidate.lastName,
-          phone:           editCandidate.phone,
-          skills:          editSkillTags,
-          currentLocation: editCandidate.currentLocation,
+          firstName,
+          lastName,
+          email:             editCandidate.email,
+          phone:             editCandidate.phone,
+          dateOfBirth:       editCandidate.dateOfBirth || "",
+          gender:            editCandidate.gender || "",
+          nationality:       editCandidate.nationality || "",
+          maritalStatus:     editCandidate.maritalStatus || "",
+          currentLocation,
+          currentSalary:     editCandidate.currentSalary || "",
+          salaryExpectation: editCandidate.salaryExpectation || "",
+          visaValidity:      editCandidate.visaValidity || "",
+          skills:            editSkillTags,
+          languages:         editLanguageTags,
+          remarks:           editCandidate.remarks || "",
+          ...(cvUrl ? { cvUrl } : {}),
         }),
       })
       const data = await res.json()
       if (data.success) {
-        setMessage({ type: "success", text: "Candidate updated" })
+        toast.success("Candidate updated")
         setEditOpen(false); loadCandidates(agencyId)
       } else {
-        setMessage({ type: "error", text: data.error || "Update failed" })
+        toast.error(data.error || "Update failed")
       }
-    } catch { setMessage({ type: "error", text: "Update failed" }) }
+    } catch { toast.error("Update failed") }
     finally  { setSaving(false) }
   }
 
@@ -445,10 +768,10 @@ export default function CandidatesPage() {
       const res  = await fetch(`/api/agency/candidate/${id}`, { method: "DELETE" })
       const data = await res.json()
       if (data.success) {
-        setMessage({ type: "success", text: "Candidate deleted" })
+        toast.success("Candidate deleted")
         setCandidates(prev => prev.filter(c => c.id !== id))
-      } else { setMessage({ type: "error", text: data.error || "Delete failed" }) }
-    } catch { setMessage({ type: "error", text: "Delete failed" }) }
+      } else { toast.error(data.error || "Delete failed") }
+    } catch { toast.error("Delete failed") }
   }
 
   if (loading) return <PageLoader />
@@ -456,8 +779,6 @@ export default function CandidatesPage() {
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
-      <MessageBanner message={message} onDismiss={() => setMessage(null)} className="mb-1" />
-
       {/* Page header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -565,7 +886,7 @@ export default function CandidatesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    {["Name","Email","Location","Skills","Status","Source","Actions"].map(h => (
+                    {["Name","Job","Location","Skills","Status","Source","Actions"].map(h => (
                       <TableHead key={h}
                         className={cn(
                           "text-[11px] font-semibold uppercase tracking-wider text-muted-foreground h-9",
@@ -584,10 +905,28 @@ export default function CandidatesPage() {
                         <TableCell className="py-3">
                           <div className="flex items-center gap-2.5">
                             <Avatar firstName={c.firstName} lastName={c.lastName} />
-                            <span className="font-medium text-sm">{c.firstName} {c.lastName}</span>
+                            <div>
+                              <span className="font-medium text-sm block">{formatCandidateName(c.firstName, c.lastName)}</span>
+                              <span className="text-xs text-muted-foreground">{c.email}</span>
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground py-3">{c.email}</TableCell>
+                        <TableCell className="py-3">
+                          <div className="text-sm leading-tight">
+                            {c.jobSubCategoryName ? (
+                              <>
+                                <span className="font-medium">{c.jobSubCategoryName}</span>
+                                {c.jobCategoryName && (
+                                  <span className="block text-xs text-muted-foreground">{c.jobCategoryName}</span>
+                                )}
+                              </>
+                            ) : c.jobCategoryName ? (
+                              <span className="font-medium">{c.jobCategoryName}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground py-3">{c.currentLocation || "—"}</TableCell>
                         <TableCell className="py-3">
                           <div className="flex flex-wrap gap-1">
@@ -673,11 +1012,8 @@ export default function CandidatesPage() {
             <section>
               <SectionHeading>Personal details</SectionHeading>
               <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-                <Field label="First name" required>
-                  <Input value={form.firstName} onChange={setStr("firstName")} placeholder="e.g. James" required />
-                </Field>
-                <Field label="Last name" required>
-                  <Input value={form.lastName} onChange={setStr("lastName")} placeholder="e.g. Adeyemi" required />
+                <Field label="Full name" required className="col-span-2">
+                  <Input value={form.fullName} onChange={setStr("fullName")} placeholder="e.g. James Adeyemi" required />
                 </Field>
                 <Field label="Date of birth">
                   <Input type="date" value={form.dateOfBirth} onChange={setStr("dateOfBirth")} />
@@ -703,13 +1039,18 @@ export default function CandidatesPage() {
               <SectionHeading>Contact</SectionHeading>
               <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                 <Field label="Email" required>
-                  <Input type="email" value={form.email} onChange={setStr("email")} placeholder="name@example.com" required />
+                  <Input type="email" value={form.email} onChange={setStr("email")} placeholder="Enter the candidate's email address" required />
                 </Field>
                 <Field label="Phone" required>
                   <Input value={form.phone} onChange={setStr("phone")} placeholder="+44 7700 000000" required />
                 </Field>
-                <Field label="Current location" className="col-span-2">
-                  <Input value={form.currentLocation} onChange={setStr("currentLocation")} placeholder="City, Country" />
+                <Field label="Country">
+                  <NativeSelect value={form.country} onChange={setField("country")} placeholder="Select country">
+                    {ALL_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </NativeSelect>
+                </Field>
+                <Field label="City">
+                  <Input value={form.city} onChange={setStr("city")} placeholder="e.g. Dubai" />
                 </Field>
               </div>
             </section>
@@ -718,14 +1059,23 @@ export default function CandidatesPage() {
             <section>
               <SectionHeading>Role & compensation</SectionHeading>
               <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-                <Field label="Job category" required>
-                  <NativeSelect value={form.jobCategoryId} onChange={setField("jobCategoryId")} placeholder="Select category" required>
-                    {jobCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </NativeSelect>
+                {/* ── NEW: Multi-select with search for sub-categories ── */}
+                <Field
+                  label="Job sub-categories"
+                  required
+                  hint="Search and select one or more roles / trades. Grouped by parent category."
+                  className="col-span-2"
+                >
+                  <SubCategoryMultiSelect
+                    options={jobSubCategoryOptions}
+                    selectedIds={form.jobSubCategoryIds}
+                    onChange={ids => setForm(prev => ({ ...prev, jobSubCategoryIds: ids }))}
+                    required
+                  />
                 </Field>
                 <Field
                   label="Assign agent"
-                  hint="Leave as agency account to assign the candidate to your agency only, or pick an agent."
+                  hint="Leave blank to assign to your agency account only."
                 >
                   <NativeSelect
                     value={selectedAgentId}
@@ -782,7 +1132,7 @@ export default function CandidatesPage() {
             </section>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t">
-              <Button type="button" variant="outline" className="h-9" disabled={creating} onClick={() => setAddOpen(false)}>
+              <Button type="button" variant="outline" className="h-9" disabled={creating} onClick={() => onAddDialogOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={creating} className="h-9 min-w-[150px] gap-2">
@@ -797,7 +1147,7 @@ export default function CandidatesPage() {
 
       {/* ── Edit Modal ──────────────────────────────────────────────────────── */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md p-0">
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0">
           <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
             <DialogHeader>
               <DialogTitle className="text-base font-semibold">Edit Candidate</DialogTitle>
@@ -806,28 +1156,171 @@ export default function CandidatesPage() {
           </div>
 
           {editCandidate && (
-            <div className="px-6 py-5 space-y-4">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-                <Field label="First name">
-                  <Input value={editCandidate.firstName}
-                    onChange={e => setEditCandidate({ ...editCandidate, firstName: e.target.value })} />
+            <div className="px-6 py-5 space-y-7">
+
+              {/* Personal */}
+              <section>
+                <SectionHeading>Personal details</SectionHeading>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                  <Field label="Full name" required className="col-span-2">
+                    <Input value={editFullName} onChange={e => setEditFullName(e.target.value)} placeholder="e.g. James Adeyemi" />
+                  </Field>
+                  <Field label="Date of birth">
+                    <Input
+                      type="date"
+                      value={editCandidate.dateOfBirth || ""}
+                      onChange={e => setEditCandidate({ ...editCandidate, dateOfBirth: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Gender">
+                    <NativeSelect
+                      value={editCandidate.gender || ""}
+                      onChange={v => setEditCandidate({ ...editCandidate, gender: v })}
+                      placeholder="Select gender"
+                    >
+                      {GENDER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </NativeSelect>
+                  </Field>
+                  <Field label="Nationality">
+                    <Input
+                      value={editCandidate.nationality || ""}
+                      onChange={e => setEditCandidate({ ...editCandidate, nationality: e.target.value })}
+                      placeholder="e.g. Indian"
+                    />
+                  </Field>
+                  <Field label="Marital status">
+                    <NativeSelect
+                      value={editCandidate.maritalStatus || ""}
+                      onChange={v => setEditCandidate({ ...editCandidate, maritalStatus: v })}
+                      placeholder="Select status"
+                    >
+                      {MARITAL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </NativeSelect>
+                  </Field>
+                </div>
+              </section>
+
+              {/* Contact */}
+              <section>
+                <SectionHeading>Contact</SectionHeading>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                  <Field label="Email" className="col-span-2">
+                    <Input
+                      type="email"
+                      value={editCandidate.email}
+                      onChange={e => setEditCandidate({ ...editCandidate, email: e.target.value })}
+                      placeholder="candidate@example.com"
+                    />
+                  </Field>
+                  <Field label="Phone">
+                    <Input
+                      value={editCandidate.phone}
+                      onChange={e => setEditCandidate({ ...editCandidate, phone: e.target.value })}
+                      placeholder="+44 7700 000000"
+                    />
+                  </Field>
+                  <Field label="Country">
+                    <NativeSelect value={editCountry} onChange={setEditCountry} placeholder="Select country">
+                      {ALL_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </NativeSelect>
+                  </Field>
+                  <Field label="City" className="col-span-2">
+                    <Input value={editCity} onChange={e => setEditCity(e.target.value)} placeholder="e.g. Dubai" />
+                  </Field>
+                </div>
+              </section>
+
+              {/* Role & compensation */}
+              <section>
+                <SectionHeading>Role & compensation</SectionHeading>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                  <Field label="Current salary">
+                    <Input
+                      value={editCandidate.currentSalary || ""}
+                      onChange={e => setEditCandidate({ ...editCandidate, currentSalary: e.target.value })}
+                      placeholder="e.g. 60,000"
+                    />
+                  </Field>
+                  <Field label="Salary expectation">
+                    <Input
+                      value={editCandidate.salaryExpectation || ""}
+                      onChange={e => setEditCandidate({ ...editCandidate, salaryExpectation: e.target.value })}
+                      placeholder="e.g. 75,000"
+                    />
+                  </Field>
+                  <Field label="Visa validity" className="col-span-2">
+                    <Input
+                      value={editCandidate.visaValidity || ""}
+                      onChange={e => setEditCandidate({ ...editCandidate, visaValidity: e.target.value })}
+                      placeholder="e.g. Dec 2027 or N/A"
+                    />
+                  </Field>
+                </div>
+              </section>
+
+              {/* Skills & languages */}
+              <section>
+                <SectionHeading>Skills & languages</SectionHeading>
+                <div className="grid gap-y-4">
+                  <Field label="Skills" hint="Type a skill and press Enter, or pick from suggestions">
+                    <TagInput tags={editSkillTags} onChange={setEditSkillTags} suggestions={SKILL_SUGGESTIONS} />
+                  </Field>
+                  <Field label="Languages" hint="Select or type spoken languages">
+                    <TagInput tags={editLanguageTags} onChange={setEditLanguageTags} suggestions={LANGUAGE_OPTIONS} placeholder="e.g. English, Arabic…" />
+                  </Field>
+                </div>
+              </section>
+
+              {/* Documents */}
+              <section>
+                <SectionHeading>CV / Documents</SectionHeading>
+                <div className="grid gap-y-4">
+                  {editCandidate.cvUrl && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Upload className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>Current CV:</span>
+                      <a
+                        href={editCandidate.cvUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline-offset-2 hover:underline truncate max-w-[260px]"
+                      >
+                        {editCandidate.cvUrl.split("/").pop()}
+                      </a>
+                    </div>
+                  )}
+                  <Field
+                    label={editCandidate.cvUrl ? "Replace CV" : "Upload CV"}
+                    hint="PDF, DOC or DOCX · max 5 MB"
+                  >
+                    <label className={cn(
+                      "flex items-center gap-3 h-10 w-full rounded-md border border-dashed border-input",
+                      "bg-muted/40 hover:bg-muted/70 px-3 cursor-pointer transition-colors text-sm text-muted-foreground",
+                    )}>
+                      <Upload className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{editCvFile ? editCvFile.name : "Click to upload…"}</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        className="sr-only"
+                        onChange={e => setEditCvFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                  </Field>
+                </div>
+              </section>
+
+              {/* Notes */}
+              <section>
+                <SectionHeading>Notes</SectionHeading>
+                <Field label="Remarks">
+                  <Input
+                    value={editCandidate.remarks || ""}
+                    onChange={e => setEditCandidate({ ...editCandidate, remarks: e.target.value })}
+                    placeholder="Any additional notes…"
+                  />
                 </Field>
-                <Field label="Last name">
-                  <Input value={editCandidate.lastName}
-                    onChange={e => setEditCandidate({ ...editCandidate, lastName: e.target.value })} />
-                </Field>
-              </div>
-              <Field label="Phone">
-                <Input value={editCandidate.phone}
-                  onChange={e => setEditCandidate({ ...editCandidate, phone: e.target.value })} />
-              </Field>
-              <Field label="Location">
-                <Input value={editCandidate.currentLocation}
-                  onChange={e => setEditCandidate({ ...editCandidate, currentLocation: e.target.value })} />
-              </Field>
-              <Field label="Skills" hint="Type a skill and press Enter, or pick from suggestions">
-                <TagInput tags={editSkillTags} onChange={setEditSkillTags} suggestions={SKILL_SUGGESTIONS} />
-              </Field>
+              </section>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t">
                 <Button variant="outline" className="h-9" disabled={saving} onClick={() => setEditOpen(false)}>
@@ -878,7 +1371,7 @@ export default function CandidatesPage() {
                   <Avatar firstName={selected.firstName} lastName={selected.lastName} />
                   <div>
                     <p className="text-base font-semibold">
-                      {selected.firstName} {selected.lastName}
+                      {formatCandidateName(selected.firstName, selected.lastName)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {selected.email}
@@ -969,6 +1462,17 @@ export default function CandidatesPage() {
                     Role & compensation
                   </p>
                   <div className="space-y-1.5 text-xs">
+                    {(selected.jobSubCategoryName || selected.jobCategoryName) && (
+                      <div>
+                        <p className="text-muted-foreground">Job</p>
+                        <p className="font-medium">
+                          {selected.jobSubCategoryName || selected.jobCategoryName}
+                          {selected.jobSubCategoryName && selected.jobCategoryName && (
+                            <span className="ml-1 text-muted-foreground font-normal">({selected.jobCategoryName})</span>
+                          )}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-muted-foreground">Current salary</p>
                       <p className="font-medium">{selected.currentSalary || "—"}</p>

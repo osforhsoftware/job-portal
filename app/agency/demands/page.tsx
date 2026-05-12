@@ -11,17 +11,22 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import {
   Eye, Send, Briefcase, MapPin, Wallet, Users,
   Loader2, Building2, LayoutGrid, LayoutList, Table2,
-  Calendar, ChevronRight, TrendingUp, Clock, UserCheck,
+  Calendar, ChevronRight, TrendingUp, Clock, UserCheck, User,
 } from "lucide-react"
 import { toast } from "sonner"
 import { PageLoader } from "@/components/page-loader"
 import { MarketplaceDemandFilterControls } from "@/components/marketplace-demand-filter-controls"
-import { cn } from "@/lib/utils"
+import { cn, distinctEntryPersonName, formatCandidateName } from "@/lib/utils"
 import {
   DEFAULT_MARKETPLACE_FILTERS,
   filterAndSortMarketplaceDemands,
   type MarketplaceFilterValues,
 } from "@/lib/marketplace-demand-filters"
+import {
+  candidateMatchesDemandClassification,
+  candidateRoleLabelForDemand,
+  type CandidateJobClassification,
+} from "@/lib/candidate-job-classification"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,6 +35,7 @@ type ViewMode = "grid" | "float" | "table"
 interface Demand {
   id: string
   companyName: string
+  createdByEmployeeName?: string
   jobTitle: string
   description: string
   requirements: string[]
@@ -56,6 +62,66 @@ interface Candidate {
   lastName: string
   skills: string[]
   status: string
+  jobCategories?: string[]
+  jobCategoryId?: string
+  jobCategoryName?: string
+  jobSubCategoryId?: string
+  jobSubCategoryName?: string
+  /** Resolved sub-category IDs (from GET /api/agency/candidates enrichment). */
+  subCategoryIds?: string[]
+  /** Resolved parent category IDs only. */
+  parentCategoryIds?: string[]
+}
+
+function candidateClassificationFromRow(c: Candidate): CandidateJobClassification {
+  return {
+    jobCategoryName: c.jobCategoryName,
+    jobSubCategoryName: c.jobSubCategoryName,
+    subCategoryIds: c.subCategoryIds ?? [],
+    parentCategoryIds: c.parentCategoryIds ?? [],
+  }
+}
+
+function candidateMatchesDemandForSubmit(c: Candidate, demand: Demand): boolean {
+  const hasResolved =
+    (c.subCategoryIds && c.subCategoryIds.length > 0) ||
+    (c.parentCategoryIds && c.parentCategoryIds.length > 0)
+  if (hasResolved) {
+    return candidateMatchesDemandClassification(candidateClassificationFromRow(c), demand)
+  }
+  if (demand.jobSubCategoryId) {
+    if (c.jobSubCategoryId === demand.jobSubCategoryId) return true
+    if ((c.jobCategories ?? []).includes(demand.jobSubCategoryId)) return true
+    if (demand.jobCategoryId && (c.jobCategories ?? []).includes(demand.jobCategoryId)) return true
+    return false
+  }
+  if (demand.jobCategoryId) {
+    return c.jobCategoryId === demand.jobCategoryId || (c.jobCategories ?? []).includes(demand.jobCategoryId)
+  }
+  return false
+}
+
+function submitDialogRoleLabel(c: Candidate, demand: Demand): string | undefined {
+  const hasResolved =
+    (c.subCategoryIds && c.subCategoryIds.length > 0) ||
+    (c.parentCategoryIds && c.parentCategoryIds.length > 0)
+  if (hasResolved) {
+    return candidateRoleLabelForDemand(candidateClassificationFromRow(c), demand)
+  }
+  if (
+    demand.jobSubCategoryId &&
+    (c.jobSubCategoryId === demand.jobSubCategoryId ||
+      (c.jobCategories ?? []).includes(demand.jobSubCategoryId))
+  ) {
+    return demand.jobSubCategoryName ?? c.jobSubCategoryName
+  }
+  if (
+    demand.jobCategoryId &&
+    (c.jobCategoryId === demand.jobCategoryId || (c.jobCategories ?? []).includes(demand.jobCategoryId))
+  ) {
+    return c.jobCategoryName ?? demand.jobCategoryName ?? c.jobSubCategoryName
+  }
+  return c.jobSubCategoryName ?? c.jobCategoryName
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -210,6 +276,7 @@ function DetailDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
+  const entryDisplay = distinctEntryPersonName(demand.companyName, demand.createdByEmployeeName)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden p-0 gap-0 rounded-xl shadow-xl">
@@ -226,9 +293,19 @@ function DetailDialog({
               <h1 className="text-2xl font-bold tracking-tight line-clamp-2 leading-tight">
                 {demand.jobTitle}
               </h1>
-              <p className="text-sm text-slate-300 mt-1">
-                {demand.companyName}
+              <p className="text-sm text-slate-300 mt-1 flex items-center gap-2">
+                <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <span>{demand.companyName}</span>
               </p>
+              {entryDisplay && (
+                <p
+                  className="text-xs text-slate-400 mt-1 flex items-center gap-1.5"
+                  title="Demand entry person"
+                >
+                  <User className="h-3.5 w-3.5 shrink-0" />
+                  {entryDisplay}
+                </p>
+              )}
             </div>
             <div className="flex-shrink-0">
               <StatusBadge status={demand.status} />
@@ -401,6 +478,37 @@ function DetailDialog({
 
 // ─── Shared: submit dialog ────────────────────────────────────────────────────
 
+/** Group candidates by their effective sub-category label, matched group first. */
+function groupCandidatesForSubmit(
+  candidates: Candidate[],
+  demand: Demand,
+): Array<{ label: string; isMatch: boolean; candidates: Candidate[] }> {
+  // Split matched vs others first
+  const matched = candidates.filter(c => candidateMatchesDemandForSubmit(c, demand))
+  const others  = candidates.filter(c => !candidateMatchesDemandForSubmit(c, demand))
+
+  const grouped = new Map<string, { isMatch: boolean; candidates: Candidate[] }>()
+
+  for (const c of matched) {
+    const label = c.jobSubCategoryName ?? c.jobCategoryName ?? "Other"
+    if (!grouped.has(label)) grouped.set(label, { isMatch: true, candidates: [] })
+    grouped.get(label)!.candidates.push(c)
+  }
+  for (const c of others) {
+    const label = c.jobSubCategoryName ?? c.jobCategoryName ?? "Other"
+    if (!grouped.has(label)) grouped.set(label, { isMatch: false, candidates: [] })
+    grouped.get(label)!.candidates.push(c)
+  }
+
+  // Sort: matched groups first, then alphabetically within each tier
+  return Array.from(grouped.entries())
+    .map(([label, g]) => ({ label, ...g }))
+    .sort((a, b) => {
+      if (a.isMatch !== b.isMatch) return a.isMatch ? -1 : 1
+      return a.label.localeCompare(b.label)
+    })
+}
+
 function SubmitDialog({
   demand, candidates, open, onOpenChange, onSubmit, submitting,
   selected, setSelected,
@@ -410,66 +518,157 @@ function SubmitDialog({
   submitting: boolean; selected: string[]; setSelected: (ids: string[]) => void
 }) {
   const available = candidates.filter(c => c.status === "available")
+  const entryDisplay = distinctEntryPersonName(demand.companyName, demand.createdByEmployeeName)
+  const groups = groupCandidatesForSubmit(available, demand)
+  const hasMatch = groups.some(g => g.isMatch)
+
+  function toggle(id: string, checked: boolean) {
+    setSelected(checked ? [...selected, id] : selected.filter(x => x !== id))
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[82vh] overflow-y-auto p-0">
-        <div className="border-b px-6 py-4">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Submit Candidates</DialogTitle>
-            <DialogDescription className="text-xs mt-0.5">
-              for <span className="font-medium text-foreground">{demand.jobTitle}</span> at {demand.companyName}
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+      <DialogContent className="flex flex-col max-w-lg max-h-[88vh] p-0 gap-0 rounded-2xl overflow-hidden shadow-2xl">
 
-        <div className="px-6 py-4 space-y-2">
-          {available.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-10 text-muted-foreground">
-              <Users className="h-8 w-8 opacity-30" />
-              <p className="text-sm">No available candidates</p>
+        {/* ── Header ── */}
+        <div className="shrink-0 bg-gradient-to-br from-slate-900 to-slate-800 px-6 pt-5 pb-4 text-white">
+          <DialogTitle className="text-base font-bold leading-snug">
+            Submit Candidates
+          </DialogTitle>
+          <DialogDescription className="mt-1 text-xs text-slate-300">
+            for{" "}
+            <span className="font-semibold text-white">{demand.jobTitle}</span>
+            {" "}at{" "}
+            <span className="font-semibold text-white">{demand.companyName}</span>
+            {entryDisplay && (
+              <span className="block mt-0.5 text-slate-400" title="Demand entry person">
+                {entryDisplay}
+              </span>
+            )}
+          </DialogDescription>
+
+          {/* Demand sub-category pill */}
+          {(demand.jobSubCategoryName || demand.jobCategoryName) && (
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[11px] font-medium text-slate-200">
+              <Briefcase className="h-3 w-3 shrink-0 text-blue-300" />
+              {demand.jobSubCategoryName ?? demand.jobCategoryName}
             </div>
-          ) : (
-            available.map(candidate => {
-              const checked = selected.includes(candidate.id)
-              return (
-                <label
-                  key={candidate.id}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all",
-                    checked ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/40",
-                  )}
-                >
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={v =>
-                      setSelected(v ? [...selected, candidate.id] : selected.filter(id => id !== candidate.id))
-                    }
-                    className="shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{candidate.firstName} {candidate.lastName}</p>
-                    <div className="mt-1">
-                      <SkillChips skills={candidate.skills ?? []} max={3} />
-                    </div>
-                  </div>
-                </label>
-              )
-            })
           )}
         </div>
 
-        <div className="border-t px-6 py-4">
+        {/* ── Scrollable candidate list ── */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-5">
+          {available.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
+              <div className="rounded-2xl bg-muted p-5">
+                <Users className="h-8 w-8 opacity-30" />
+              </div>
+              <p className="text-sm font-medium">No available candidates</p>
+            </div>
+          ) : (
+            groups.map((group) => (
+              <div key={group.label}>
+
+                {/* Section heading */}
+                <div className={cn(
+                  "flex items-center gap-2 mb-2.5 px-1",
+                )}>
+                  {group.isMatch && (
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                  )}
+                  <h3 className={cn(
+                    "text-xs font-bold uppercase tracking-wider",
+                    group.isMatch
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-muted-foreground",
+                  )}>
+                    {group.label}
+                  </h3>
+                  {group.isMatch && (
+                    <span className="ml-auto text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full px-2 py-0.5">
+                      Best match
+                    </span>
+                  )}
+                  {!group.isMatch && hasMatch && (
+                    <span className="ml-auto text-[10px] font-medium text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5">
+                      Other
+                    </span>
+                  )}
+                </div>
+
+                {/* Candidate rows */}
+                <div className="space-y-2">
+                  {group.candidates.map(candidate => {
+                    const checked = selected.includes(candidate.id)
+                    const dimmed = !group.isMatch && hasMatch
+                    return (
+                      <label
+                        key={candidate.id}
+                        className={cn(
+                          "flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all duration-150 select-none",
+                          dimmed
+                            ? cn(
+                                "border-border/50 bg-muted/20",
+                                checked
+                                  ? "border-primary/40 bg-primary/5 opacity-80"
+                                  : "opacity-50 hover:opacity-70 hover:border-border hover:bg-muted/40",
+                              )
+                            : checked
+                              ? "border-primary bg-primary/8 shadow-sm ring-1 ring-primary/20"
+                              : "border-border hover:border-primary/50 hover:bg-muted/50 hover:shadow-sm",
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={v => toggle(candidate.id, !!v)}
+                          className="shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            "font-semibold text-sm leading-snug",
+                            dimmed && !checked && "text-muted-foreground",
+                          )}>
+                            {formatCandidateName(candidate.firstName, candidate.lastName)}
+                          </p>
+                          {candidate.skills && candidate.skills.length > 0 && (
+                            <div className="mt-1.5">
+                              <SkillChips skills={candidate.skills} max={4} />
+                            </div>
+                          )}
+                        </div>
+                        {checked && (
+                          <span className="shrink-0 h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                            <ChevronRight className="h-3 w-3 text-primary" />
+                          </span>
+                        )}
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* ── Sticky footer ── */}
+        <div className="shrink-0 border-t bg-background px-5 py-4">
+          {selected.length > 0 && (
+            <p className="text-xs text-muted-foreground text-center mb-2">
+              {selected.length} candidate{selected.length !== 1 ? "s" : ""} selected
+            </p>
+          )}
           <Button
             onClick={onSubmit}
             disabled={selected.length === 0 || submitting}
-            className="w-full h-9 gap-2"
+            className="w-full h-10 gap-2 rounded-xl font-semibold"
           >
             {submitting
               ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
-              : <><Send className="h-4 w-4" /> Submit {selected.length} Candidate{selected.length !== 1 ? "s" : ""}</>
+              : <><Send className="h-4 w-4" /> Submit {selected.length > 0 ? `${selected.length} ` : ""}Candidate{selected.length !== 1 ? "s" : ""}</>
             }
           </Button>
         </div>
+
       </DialogContent>
     </Dialog>
   )
@@ -634,7 +833,12 @@ export default function DemandsPage() {
         {/* ══ GRID VIEW ══════════════════════════════════════════════════════ */}
         {viewMode === "grid" && filtered.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map(demand => (
+            {filtered.map((demand) => {
+              const entryDisplay = distinctEntryPersonName(
+                demand.companyName,
+                demand.createdByEmployeeName,
+              )
+              return (
               <Card
                 key={demand.id}
                 className={cn(
@@ -654,9 +858,20 @@ export default function DemandsPage() {
                       <CardTitle className="text-sm font-semibold leading-snug line-clamp-1">
                         {demand.jobTitle}
                       </CardTitle>
-                      <CardDescription className="flex items-center gap-1 mt-0.5 text-xs">
-                        <Building2 className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{demand.companyName}</span>
+                      <CardDescription className="mt-0.5 space-y-0.5 text-xs">
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{demand.companyName}</span>
+                        </span>
+                        {entryDisplay && (
+                          <span
+                            className="flex items-center gap-1 text-muted-foreground"
+                            title="Demand entry person"
+                          >
+                            <User className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{entryDisplay}</span>
+                          </span>
+                        )}
                       </CardDescription>
                     </div>
                     <StatusBadge status={demand.status} />
@@ -687,16 +902,22 @@ export default function DemandsPage() {
                   <div className="mt-auto pt-1">
                     <ActionButtons demand={demand} />
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         )}
 
         {/* ══ FLOAT (LIST) VIEW ══════════════════════════════════════════════ */}
         {viewMode === "float" && filtered.length > 0 && (
           <div className="space-y-2.5">
-            {filtered.map(demand => (
+            {filtered.map((demand) => {
+              const entryDisplay = distinctEntryPersonName(
+                demand.companyName,
+                demand.createdByEmployeeName,
+              )
+              return (
               <Card
                 key={demand.id}
                 className={cn(
@@ -726,6 +947,15 @@ export default function DemandsPage() {
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Building2 className="h-3 w-3 shrink-0" />{demand.companyName}
                         </span>
+                        {entryDisplay && (
+                          <span
+                            className="flex items-center gap-1 text-xs text-muted-foreground"
+                            title="Demand entry person"
+                          >
+                            <User className="h-3 w-3 shrink-0" />
+                            {entryDisplay}
+                          </span>
+                        )}
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <MapPin className="h-3 w-3 shrink-0" />{demand.location}
                         </span>
@@ -749,7 +979,8 @@ export default function DemandsPage() {
                   </CardContent>
                 </div>
               </Card>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -773,7 +1004,12 @@ export default function DemandsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(demand => (
+                {filtered.map((demand) => {
+                  const entryDisplay = distinctEntryPersonName(
+                    demand.companyName,
+                    demand.createdByEmployeeName,
+                  )
+                  return (
                   <TableRow
                     key={demand.id}
                     className={cn(
@@ -786,10 +1022,21 @@ export default function DemandsPage() {
                       <SkillChips skills={demand.skills} max={2} />
                     </TableCell>
                     <TableCell className="py-3">
-                      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Building2 className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate max-w-[120px]">{demand.companyName}</span>
-                      </span>
+                      <div className="flex flex-col gap-0.5 min-w-0 max-w-[140px]">
+                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <Building2 className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{demand.companyName}</span>
+                        </span>
+                        {entryDisplay && (
+                          <span
+                            className="flex items-center gap-1 text-[11px] text-muted-foreground pl-5"
+                            title="Demand entry person"
+                          >
+                            <User className="h-3 w-3 shrink-0 -ml-4" />
+                            <span className="truncate">{entryDisplay}</span>
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="py-3">
                       <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -817,7 +1064,8 @@ export default function DemandsPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           </Card>

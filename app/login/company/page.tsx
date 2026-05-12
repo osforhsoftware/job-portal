@@ -135,7 +135,7 @@ export default function CompanyLoginPage() {
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="contact@company.com"
+                          placeholder="Enter your email address"
                           autoComplete="email"
                           disabled={loading}
                           {...field}

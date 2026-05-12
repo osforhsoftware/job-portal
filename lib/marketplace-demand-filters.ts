@@ -8,6 +8,8 @@ export type MarketplaceDemandForFilter = {
   id: string
   jobTitle: string
   companyName: string
+  /** Company user who created the demand (from /company/demands/new). */
+  createdByEmployeeName?: string
   description?: string
   skills?: string[]
   location: string
@@ -109,6 +111,7 @@ function predicate<T extends MarketplaceDemandForFilter>(
     !q ||
     d.jobTitle.toLowerCase().includes(q) ||
     d.companyName.toLowerCase().includes(q) ||
+    (d.createdByEmployeeName || "").toLowerCase().includes(q) ||
     (d.location || "").toLowerCase().includes(q) ||
     (d.skills || []).some((s) => s.toLowerCase().includes(q)) ||
     (d.jobCategoryName || "").toLowerCase().includes(q) ||

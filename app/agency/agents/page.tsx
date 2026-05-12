@@ -264,7 +264,14 @@
                 </div>
                 <div>
                   <Label htmlFor="add-email">Email *</Label>
-                  <Input id="add-email" type="email" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
+                  <Input
+                    id="add-email"
+                    type="email"
+                    value={formData.email}
+                    onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
+                    placeholder="Enter the agent's email address"
+                    autoComplete="email"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="add-password">Password *</Label>
@@ -447,15 +454,15 @@
 
         {/* Details Dialog */}
         <Dialog open={detailOpen} onOpenChange={(open) => { setDetailOpen(open); if (!open) setSelectedAgent(null) }}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg min-h-0 max-h-[90vh] w-full overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>Agent Details</DialogTitle>
               <DialogDescription>View full profile and ID proof</DialogDescription>
             </DialogHeader>
             {selectedAgent && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+              <div className="min-w-0 space-y-4">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                  <div className="h-16 w-16 shrink-0 rounded-full bg-muted flex items-center justify-center overflow-hidden">
                     {selectedAgent.photoUrl ? (
                       <img
                         src={selectedAgent.photoUrl}
@@ -473,34 +480,34 @@
                       </span>
                     )}
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1 [overflow-wrap:anywhere] break-words">
                     <p className="text-base font-semibold">{selectedAgent.name}</p>
                     <p className="text-sm text-muted-foreground">{selectedAgent.email}</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Joined {selectedAgent.createdAt ? new Date(selectedAgent.createdAt).toLocaleDateString() : "—"}
                     </p>
                   </div>
-                  <Badge variant={selectedAgent.isActive ? "default" : "secondary"}>
+                  <Badge className="shrink-0" variant={selectedAgent.isActive ? "default" : "secondary"}>
                     {selectedAgent.isActive ? "Active" : "Inactive"}
                   </Badge>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="space-y-1">
+                <div className="grid min-w-0 grid-cols-2 gap-3 text-sm">
+                  <div className="min-w-0 space-y-1 [overflow-wrap:anywhere] break-words">
                     <p className="text-xs text-muted-foreground">Phone</p>
                     <p className="font-medium">{selectedAgent.phone || "—"}</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1 [overflow-wrap:anywhere] break-words">
                     <p className="text-xs text-muted-foreground">Commission %</p>
                     <p className="font-medium">{selectedAgent.commissionPercent}%</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1 [overflow-wrap:anywhere] break-words">
                     <p className="text-xs text-muted-foreground">Referral Code</p>
-                    <p className="font-mono text-xs bg-muted px-2 py-1 rounded">
+                    <p className="min-w-0 break-all font-mono text-xs bg-muted px-2 py-1 rounded">
                       {selectedAgent.referralCode}
                     </p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1 [overflow-wrap:anywhere] break-words">
                     <p className="text-xs text-muted-foreground">Stats</p>
                     <p className="font-medium">
                       {selectedAgent.totalReferrals} referrals · {selectedAgent.totalPlacements} placements
@@ -511,7 +518,7 @@
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-border p-3 space-y-2">
+                <div className="min-w-0 rounded-lg border border-border p-3 space-y-2">
                   <p className="text-sm font-medium flex items-center gap-2">
                     <FileText className="h-4 w-4" />
                     ID Proof Document

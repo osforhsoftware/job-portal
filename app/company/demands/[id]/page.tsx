@@ -13,6 +13,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toast } from "sonner"
 import { PageLoader } from "@/components/page-loader"
+import { formatCandidateName } from "@/lib/utils"
 
 interface Submission {
   id: string
@@ -519,7 +520,7 @@ export default function CompanyDemandSubmissionsPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {recommended.map((c) => {
-                const name = `${c.firstName} ${c.lastName}`.trim() || "Candidate"
+                const name = formatCandidateName(c.firstName, c.lastName) || "Candidate"
                 return (
                   <div
                     key={c.id}

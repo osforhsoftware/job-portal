@@ -5,9 +5,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
+import { FormStepper } from "@/components/ui/form-stepper"
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, ArrowRight, CheckCircle, Loader2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, CheckCircle, Loader2, User, Briefcase } from "lucide-react"
 import { PersonalInfoEditStep } from "@/components/candidate/steps/personal-info-edit-step"
 import { JobProfileEditStep } from "@/components/candidate/steps/job-profile-edit-step"
 import type { CandidateFormData } from "@/components/candidate/registration-wizard"
@@ -43,6 +43,7 @@ const initialFormData: CandidateFormData = {
   cvFile: null,
   videoFile: null,
   photoFile: null,
+  photoUrl: "",
   passportFile: null,
   salaryRange: null,
   visaCategory: "",
@@ -106,7 +107,7 @@ export default function CandidateProfileEditPage() {
             languages: Array.isArray(c.languages) ? c.languages : [],
             jobCategories: Array.isArray(c.jobCategories) ? c.jobCategories : [],
             totalExperience: c.totalExperience || "",
-            noticePeriod: c.noticePeriod || "",
+            noticePeriod: (c.noticePeriod || "").toLowerCase(),
             currentJobTitle: c.currentJobTitle || "",
             currentCompany: c.currentCompany || "",
             currentSalary: c.currentSalary || "",
@@ -115,11 +116,12 @@ export default function CandidateProfileEditPage() {
             jobTypes: Array.isArray(c.jobTypes) ? c.jobTypes : [],
             qualification: c.highestEducation || "",
             highestEducation: c.highestEducation || "",
-            fieldOfStudy: c.fieldOfStudy || "",
+            fieldOfStudy: (c.fieldOfStudy || "").toLowerCase(),
             skills: Array.isArray(c.skills) ? c.skills : [],
             certifications: Array.isArray(c.certifications) ? c.certifications : [],
             salaryRange: c.salaryRange || null,
             visaCategory: c.visaCategory || "",
+            photoUrl: c.photoUrl || "",
             acceptTerms: true,
           })
         })
@@ -166,11 +168,11 @@ export default function CandidateProfileEditPage() {
           jobTypes: formData.jobTypes,
           jobCategories: formData.jobCategories,
           highestEducation: formData.qualification || formData.highestEducation,
-          fieldOfStudy: formData.fieldOfStudy,
           skills: formData.skills,
           certifications: formData.certifications,
           visaCategory: formData.visaCategory,
           salaryRange: formData.salaryRange,
+          photoUrl: formData.photoUrl,
         }),
       })
       const data = await res.json()
@@ -188,10 +190,19 @@ export default function CandidateProfileEditPage() {
   }
 
   const steps = [
-    { id: 1, name: "Personal Information" },
-    { id: 2, name: "Job & Profile" },
-  ]
-  const progress = (currentStep / steps.length) * 100
+    {
+      id: 1,
+      name: "Personal Information",
+      subtitle: "Name, contact & background",
+      icon: User,
+    },
+    {
+      id: 2,
+      name: "Job & Profile",
+      subtitle: "Role, pay & experience",
+      icon: Briefcase,
+    },
+  ] as const
 
   if (loading) {
     return (
@@ -222,17 +233,16 @@ export default function CandidateProfileEditPage() {
         <h1 className="mb-2 text-2xl font-bold text-foreground">Edit profile</h1>
         <p className="mb-6 text-muted-foreground">Update your details to improve profile completion.</p>
 
-        <Progress value={progress} className="mb-6 h-2" />
-        <div className="mb-6 flex justify-between">
-          {steps.map((step) => (
-            <span
-              key={step.id}
-              className={`text-sm font-medium ${currentStep === step.id ? "text-primary" : "text-muted-foreground"}`}
-            >
-              {step.name}
-            </span>
-          ))}
-        </div>
+        <FormStepper
+          className="mb-8"
+          currentStep={currentStep}
+          steps={steps.map((s) => ({
+            id: s.id,
+            title: s.name,
+            subtitle: s.subtitle,
+            icon: s.icon,
+          }))}
+        />
 
         <Card className="border-border shadow-lg">
           <CardContent className="p-6 md:p-8">

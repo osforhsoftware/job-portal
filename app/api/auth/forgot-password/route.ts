@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
 
     const type =
-      role === 'company' || role === 'corporate'
+      role === 'company'
         ? 'company'
         : role === 'admin' || role === 'super_admin'
           ? 'admin'
@@ -90,21 +90,8 @@ export async function POST(request: NextRequest) {
     // Send reset email only after confirming email is registered
     await sendPasswordResetEmail(normalizedEmail, resetLink)
 
-    const userType = role === 'super_admin' ? 'superadmin' : role === 'corporate' ? 'company' : role
-    await logActivity({
-      userId: (account as any).id,
-      userName: (account as any).name,
-      userEmail: normalizedEmail,
-      userType: userType as any,
-      entityType: 'login',
-      entityId: (account as any).id,
-      action: 'forgot_password',
-      description: `Password reset requested for ${normalizedEmail}`,
-      metadata: { email: normalizedEmail, role },
-      status: 'success',
-      ip,
-      userAgent: ua,
-    })
+    const userType = role === 'super_admin' ? 'superadmin' : role === 'company' ? 'company' : role
+    
 
     return NextResponse.json({
       success: true,

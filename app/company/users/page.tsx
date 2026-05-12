@@ -165,7 +165,7 @@ export default function CompanyUsersPage() {
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@company.com" disabled={!canManage || saving} />
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter the user's email address" disabled={!canManage || saving} />
             </div>
           </div>
 

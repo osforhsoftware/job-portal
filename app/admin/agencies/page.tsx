@@ -651,23 +651,23 @@ export default function AgenciesManagementPage() {
       </main>
 
       <Dialog open={!!selectedAgency} onOpenChange={() => setSelectedAgency(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg min-h-0 max-h-[90vh] w-full overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>Agency Details</DialogTitle>
             <DialogDescription>Review agency information and proof document</DialogDescription>
           </DialogHeader>
           {selectedAgency && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="min-w-0 space-y-4">
+              <div className="grid min-w-0 grid-cols-2 gap-4">
                 <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Agency Name</p>
                   <p className="font-medium break-words">{selectedAgency.name}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Status</p>
                   {getApprovalBadge(selectedAgency)}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Active</p>
                   {getStatus(selectedAgency) !== "spam" ? getActiveBadge(selectedAgency) : "—"}
                 </div>
@@ -679,11 +679,11 @@ export default function AgenciesManagementPage() {
                   <p className="text-xs text-muted-foreground">Phone</p>
                   <p className="text-sm break-words">{selectedAgency.phone}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Total Candidates</p>
                   <p className="text-sm font-medium">{selectedAgency.totalCandidates}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Registered</p>
                   <p className="text-sm">
                     {selectedAgency.createdAt
@@ -693,9 +693,9 @@ export default function AgenciesManagementPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border p-4 space-y-4">
+              <div className="min-w-0 w-full max-w-full rounded-lg border border-border p-4 space-y-4">
                 <p className="text-sm font-medium">Update status (Super Admin)</p>
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex min-w-0 flex-wrap items-center gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs text-muted-foreground">Status</label>
                     <Select
@@ -752,11 +752,11 @@ export default function AgenciesManagementPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border p-4 space-y-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
+              <div className="min-w-0 w-full max-w-full rounded-lg border border-border p-4 space-y-3">
+                <div className="flex min-w-0 items-start gap-3 sm:items-center sm:justify-between sm:gap-4">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">Bulk Upload Access</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
                       When enabled, this agency can use the bulk candidate upload feature.
                     </p>
                   </div>
@@ -768,22 +768,30 @@ export default function AgenciesManagementPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border p-4">
+              <div className="min-w-0 w-full max-w-full rounded-lg border border-border p-4">
                 <p className="text-sm font-medium mb-2">Proof Document</p>
                 {selectedAgency.proofDocumentUrl ? (
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-8 w-8 text-primary" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate">
-                        {selectedAgency.proofDocumentUrl.split("/").pop()}
+                  <div className="flex min-w-0 w-full max-w-full items-start gap-2 sm:items-center sm:gap-3">
+                    <FileText className="mt-0.5 h-8 w-8 shrink-0 text-primary sm:mt-0" />
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="text-sm [overflow-wrap:anywhere] break-words"
+                        title={
+                          selectedAgency.proofDocumentUrl.split("/").pop() ||
+                          selectedAgency.proofDocumentUrl
+                        }
+                      >
+                        {selectedAgency.proofDocumentUrl.split("/").pop() ||
+                          selectedAgency.proofDocumentUrl}
                       </p>
                     </div>
                     <a
                       href={selectedAgency.proofDocumentUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      className="shrink-0 self-center"
                     >
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="shrink-0">
                         <Download className="h-4 w-4 mr-1" />
                         Download
                       </Button>

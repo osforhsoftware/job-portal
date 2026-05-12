@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { PageLoader } from "@/components/page-loader"
+import { formatCandidateName } from "@/lib/utils"
 
 interface DemandOption {
   id: string
@@ -263,7 +264,7 @@ function AgentBulkUploadContent() {
               <CardContent>
                 <div className="space-y-2 max-h-[320px] overflow-y-auto">
                   {matched.map((c) => {
-                    const name = `${c.firstName} ${c.lastName}`.trim() || "Candidate"
+                    const name = formatCandidateName(c.firstName, c.lastName) || "Candidate"
                     const checked = selectedIds.has(c.id)
                     return (
                       <div
@@ -321,7 +322,7 @@ function AgentBulkUploadContent() {
               <CardContent>
                 <div className="space-y-2 max-h-[320px] overflow-y-auto">
                   {other.map((c) => {
-                    const name = `${c.firstName} ${c.lastName}`.trim() || "Candidate"
+                    const name = formatCandidateName(c.firstName, c.lastName) || "Candidate"
                     const checked = selectedIds.has(c.id)
                     return (
                       <div

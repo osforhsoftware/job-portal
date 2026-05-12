@@ -5,14 +5,15 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Briefcase, Plus, MapPin, Users, TrendingUp, CheckCircle2, Clock, ChevronRight, LayoutGrid, LayoutList } from "lucide-react"
+import { Briefcase, Plus, MapPin, Users, TrendingUp, CheckCircle2, Clock, ChevronRight, LayoutGrid, LayoutList, User, Building2 } from "lucide-react"
 import { PageLoader } from "@/components/page-loader"
-import { cn } from "@/lib/utils"
+import { cn, distinctEntryPersonName } from "@/lib/utils"
 
 interface Demand {
   id: string
   jobTitle: string
   companyName: string
+  createdByEmployeeName?: string
   location: string
   positions?: number
   quantity?: number
@@ -212,7 +213,9 @@ export default function CompanyDemandsPage() {
           {/* ── GRID ── */}
           {view === "grid" && (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {demands.map(d => (
+              {demands.map(d => {
+                const entryDisplay = distinctEntryPersonName(d.companyName, d.createdByEmployeeName)
+                return (
                 <Card
                   key={d.id}
                   className="group relative overflow-hidden border-border/60 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
@@ -223,7 +226,19 @@ export default function CompanyDemandsPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-semibold text-base leading-snug truncate">{d.jobTitle}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5 truncate">{d.companyName}</p>
+                        <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 truncate">
+                          <Building2 className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{d.companyName}</span>
+                        </p>
+                        {entryDisplay && (
+                          <p
+                            className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 truncate"
+                            title="Demand entry person"
+                          >
+                            <User className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{entryDisplay}</span>
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0 text-right">
                         <DemandRightStatus status={d.status} approvalStatus={d.approvalStatus} />
@@ -259,14 +274,17 @@ export default function CompanyDemandsPage() {
                     </Button>
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           )}
 
           {/* ── LIST ── */}
           {view === "list" && (
             <div className="space-y-2">
-              {demands.map(d => (
+              {demands.map(d => {
+                const entryDisplay = distinctEntryPersonName(d.companyName, d.createdByEmployeeName)
+                return (
                 <Card
                   key={d.id}
                   className="group border-border/60 transition-all duration-200 hover:shadow-md hover:border-indigo-300/60"
@@ -284,7 +302,16 @@ export default function CompanyDemandsPage() {
                         <DemandRightStatus status={d.status} approvalStatus={d.approvalStatus} />
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        <span>{d.companyName}</span>
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3 shrink-0" />
+                          {d.companyName}
+                        </span>
+                        {entryDisplay && (
+                          <span className="flex items-center gap-1" title="Demand entry person">
+                            <User className="h-3 w-3 shrink-0" />
+                            {entryDisplay}
+                          </span>
+                        )}
                         {d.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{d.location}</span>}
                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(d.createdAt).toLocaleDateString()}</span>
                       </div>
@@ -302,7 +329,8 @@ export default function CompanyDemandsPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           )}
         </>

@@ -230,7 +230,7 @@ export function MarketplaceDemandFilterControls({
         <div className="relative min-w-0 sm:col-span-2 lg:col-span-2">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search title, company, location, skills, category…"
+            placeholder="Search title, company, entry contact, location, skills, category…"
             value={filters.search}
             onChange={(e) => patch({ search: e.target.value })}
             className="pl-9 h-9"

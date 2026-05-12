@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logActivity, getClientIp, getUserAgent } from '@/lib/activityLogger'
 
+function oneMonthFromNow(): string {
+  const d = new Date()
+  d.setMonth(d.getMonth() + 1)
+  return d.toISOString()
+}
+
 export async function GET() {
   try {
     const [agencies, companies, subscriptions] = await Promise.all([
@@ -66,7 +72,7 @@ export async function PATCH(request: NextRequest) {
   const ua = getUserAgent(request)
   try {
     const body = await request.json()
-    const { entityType, entityId, subscriptionPlan, subscriptionStatus, subscriptionExpiresAt } = body
+    const { entityType, entityId, subscriptionPlan, subscriptionStatus, subscriptionExpiresAt, subscriptionDuration } = body
 
     if (!entityType || !entityId) {
       return NextResponse.json(
@@ -101,8 +107,11 @@ export async function PATCH(request: NextRequest) {
         }
         updates.subscriptionStatus = subscriptionStatus
       }
-      if (subscriptionExpiresAt !== undefined) {
-        updates.subscriptionExpiresAt = subscriptionExpiresAt || undefined
+      if (subscriptionExpiresAt !== undefined && subscriptionExpiresAt !== '') {
+        updates.subscriptionExpiresAt = subscriptionExpiresAt
+      } else if (updates.subscriptionPlan) {
+        // Auto-set expiry to 1 month from now when plan is changed and no date provided
+        updates.subscriptionExpiresAt = oneMonthFromNow()
       }
       if (Object.keys(updates).length === 0) {
         return NextResponse.json({ error: 'No subscription fields to update' }, { status: 400 })
@@ -120,12 +129,17 @@ export async function PATCH(request: NextRequest) {
       if (!company) {
         return NextResponse.json({ error: 'Company not found' }, { status: 404 })
       }
-      const updates: { subscriptionPlan?: string; subscriptionStatus?: string; subscriptionExpiresAt?: string } = {}
+      const updates: {
+        subscriptionPlan?: string
+        subscriptionStatus?: string
+        subscriptionExpiresAt?: string
+        subscriptionDuration?: string
+      } = {}
       if (subscriptionPlan !== undefined && subscriptionPlan !== '') {
-        const valid = ['bronze', 'silver', 'gold']
+        const valid = ['bronze', 'silver', 'gold', 'diamond']
         if (!valid.includes(subscriptionPlan)) {
           return NextResponse.json(
-            { error: 'subscriptionPlan must be bronze, silver, or gold' },
+            { error: 'subscriptionPlan must be bronze, silver, gold, or diamond' },
             { status: 400 }
           )
         }
@@ -141,8 +155,21 @@ export async function PATCH(request: NextRequest) {
         }
         updates.subscriptionStatus = subscriptionStatus
       }
-      if (subscriptionExpiresAt !== undefined) {
-        updates.subscriptionExpiresAt = subscriptionExpiresAt || undefined
+      if (subscriptionExpiresAt !== undefined && subscriptionExpiresAt !== '') {
+        updates.subscriptionExpiresAt = subscriptionExpiresAt
+      } else if (updates.subscriptionPlan) {
+        // Auto-set expiry to 1 month from now when plan is changed and no date provided
+        updates.subscriptionExpiresAt = oneMonthFromNow()
+      }
+      if (subscriptionDuration !== undefined && subscriptionDuration !== '') {
+        const validDurations = ['monthly', 'yearly']
+        if (!validDurations.includes(subscriptionDuration)) {
+          return NextResponse.json(
+            { error: 'subscriptionDuration must be monthly or yearly' },
+            { status: 400 }
+          )
+        }
+        updates.subscriptionDuration = subscriptionDuration
       }
       if (Object.keys(updates).length === 0) {
         return NextResponse.json({ error: 'No subscription fields to update' }, { status: 400 })
@@ -155,7 +182,7 @@ export async function PATCH(request: NextRequest) {
       const updated = await db.companies.getById(entityId)
       if (!updated) return NextResponse.json({ success: true, entity: null })
       const { password, ...safe } = (updated as any) || {}
-      await logActivity({ userType: 'superadmin', entityType: 'subscription', entityId, action: 'update_subscription', description: `Updated subscription for company ${company.name}`, metadata: { companyName: company.name, subscriptionPlan, subscriptionStatus, subscriptionExpiresAt }, status: 'success', ip, userAgent: ua })
+      await logActivity({ userType: 'superadmin', entityType: 'subscription', entityId, action: 'update_subscription', description: `Updated subscription for company ${company.name}`, metadata: { companyName: company.name, subscriptionPlan, subscriptionStatus, subscriptionExpiresAt, subscriptionDuration }, status: 'success', ip, userAgent: ua })
       return NextResponse.json({ success: true, entity: safe, entityType: 'company' })
     }
 

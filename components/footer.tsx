@@ -13,6 +13,7 @@ const footerLinks = {
     { name: "Contact Us", href: "/contact" },
   ],
   forCompanies: [
+    
     { name: "Register Company", href: "/register/company" },
     { name: "Pricing", href: "/pricing" },
     { name: "Post a Demand", href: "/company/demands/new" },
@@ -25,6 +26,7 @@ const footerLinks = {
     { name: "Open Demands", href: "/agency/demands" },
     { name: "Bulk Upload (CVs)", href: "/agency/bulk-upload" },
     { name: "Commission Rates", href: "/agency/commission" },
+    { name: "Commission Structure", href: "/commission-structure" },
   ],
   /** Aligned with the main header + Home. Legal links are in the bottom bar. */
   explore: [
@@ -134,13 +136,16 @@ export function Footer() {
           </p>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">
-              Privacy
+              Privacy Policy
             </Link>
             <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">
-              Terms
+              Terms of Service
             </Link>
             <Link href="/cookies" className="text-sm text-muted-foreground hover:text-foreground">
-              Cookies
+              Cookie Policy
+            </Link>
+            <Link href="/acceptable-use" className="text-sm text-muted-foreground hover:text-foreground">
+              Acceptable Use
             </Link>
           </div>
         </div>

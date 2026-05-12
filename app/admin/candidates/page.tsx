@@ -1,7 +1,7 @@
 "use client"
 
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { AdminNav } from "@/components/admin-nav"
@@ -29,6 +29,7 @@ import {
   Mail, Phone, MapPin, Briefcase, Award, Calendar, X,
 } from "lucide-react"
 import type { Candidate } from "@/lib/db"
+import { formatCandidateName } from "@/lib/utils"
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -112,9 +113,9 @@ function matchesExp(c: Candidate, bucket: string): boolean {
   return true
 }
 
-function matchesDate(c: Candidate, range: string): boolean {
+function matchesDate(c: Candidate, range: string, now: number): boolean {
   if (range === "all") return true
-  const diff = Date.now() - new Date(c.createdAt).getTime()
+  const diff = now - new Date(c.createdAt).getTime()
   const day = 86_400_000
   if (range === "7d")  return diff <= 7  * day
   if (range === "30d") return diff <= 30 * day
@@ -158,7 +159,7 @@ function FilterChip({ label, onRemove }: { label?: string; onRemove: () => void 
   return (
     <span className="flex items-center gap-1 px-2.5 py-1 bg-foreground text-background text-xs font-medium rounded-full">
       {label}
-      <button onClick={onRemove} className="ml-0.5 hover:opacity-70 transition">
+      <button suppressHydrationWarning onClick={onRemove} className="ml-0.5 hover:opacity-70 transition">
         <X className="h-3 w-3" />
       </button>
     </span>
@@ -174,6 +175,7 @@ function PillBtn({
 }) {
   return (
     <button
+      suppressHydrationWarning
       onClick={onClick}
       className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
         active
@@ -196,6 +198,10 @@ export default function CandidatesManagementPage() {
   const [userRole, setUserRole]     = useState<string | null>(null)
   const [selected, setSelected]     = useState<Candidate | null>(null)
   const [jobCategoryLabelById, setJobCategoryLabelById] = useState<Record<string, string>>({})
+
+  // stable "now" timestamp set once on mount so Date.now() never runs during render
+  const nowRef = useRef(0)
+  useEffect(() => { nowRef.current = Date.now() }, [])
 
   // filter state
   const [search,     setSearch]     = useState("")
@@ -259,7 +265,7 @@ export default function CandidatesManagementPage() {
         (category === "all" || (c.jobCategories ?? []).includes(category)) &&
         (location === "all" || c.currentLocation === location) &&
         matchesExp(c, exp) &&
-        matchesDate(c, date)
+        matchesDate(c, date, nowRef.current)
       )
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -306,6 +312,7 @@ export default function CandidatesManagementPage() {
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
+                  suppressHydrationWarning
                   type="text"
                   placeholder="Search name or email…"
                   value={search}
@@ -317,6 +324,7 @@ export default function CandidatesManagementPage() {
               <div className="flex items-center gap-2 ml-auto">
                 {activeCount > 0 && (
                   <button
+                    suppressHydrationWarning
                     onClick={clearAll}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition"
                   >
@@ -326,7 +334,7 @@ export default function CandidatesManagementPage() {
 
                 <Popover open={filterOpen} onOpenChange={setFilterOpen}>
                   <PopoverTrigger asChild>
-                    <button className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground bg-muted/40 border border-border rounded-lg hover:bg-muted transition">
+                    <button suppressHydrationWarning className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground bg-muted/40 border border-border rounded-lg hover:bg-muted transition">
                       <SlidersHorizontal className="h-4 w-4" />
                       Filters
                       {activeCount > 0 && (
@@ -420,12 +428,14 @@ export default function CandidatesManagementPage() {
 
                     <div className="pt-1 flex justify-between items-center">
                       <button
+                        suppressHydrationWarning
                         onClick={clearAll}
                         className="text-xs text-muted-foreground hover:text-foreground transition"
                       >
                         Reset all
                       </button>
                       <button
+                        suppressHydrationWarning
                         onClick={() => setFilterOpen(false)}
                         className="px-4 py-1.5 bg-foreground text-background text-xs font-medium rounded-lg hover:opacity-80 transition"
                       >
@@ -525,12 +535,12 @@ export default function CandidatesManagementPage() {
                             />
                           ) : (
                             <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
-                              {c.firstName[0]}{c.lastName[0]}
+                              {formatCandidateName(c.firstName, c.lastName).split(/\s+/).map((p: string) => p[0]).slice(0, 2).join("")}
                             </div>
                           )}
                         </td>
                         <td className="px-4 py-3.5">
-                          <p className="font-medium text-foreground">{c.firstName} {c.lastName}</p>
+                          <p className="font-medium text-foreground">{formatCandidateName(c.firstName, c.lastName)}</p>
                           {c.currentJobTitle && (
                             <p className="text-xs text-muted-foreground mt-0.5">{c.currentJobTitle}</p>
                           )}
@@ -556,7 +566,7 @@ export default function CandidatesManagementPage() {
                         <td className="px-4 py-3.5 text-foreground">
                           {c.totalExperience || "—"}
                         </td>
-                        <td className="px-4 py-3.5 text-muted-foreground text-xs whitespace-nowrap">
+                        <td suppressHydrationWarning className="px-4 py-3.5 text-muted-foreground text-xs whitespace-nowrap">
                           {new Date(c.createdAt).toLocaleDateString("en-GB", {
                             day: "2-digit", month: "short", year: "numeric",
                           })}
@@ -566,6 +576,7 @@ export default function CandidatesManagementPage() {
                         </td>
                         <td className="pr-6 py-3.5 text-right">
                           <button
+                            suppressHydrationWarning
                             onClick={e => { e.stopPropagation(); setSelected(c) }}
                             className="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
                           >
@@ -599,7 +610,7 @@ export default function CandidatesManagementPage() {
                 )}
                 <div className="flex-1 min-w-0">
                   <DialogTitle className="text-base font-semibold text-foreground leading-tight truncate">
-                    {selected.firstName} {selected.lastName}
+                    {formatCandidateName(selected.firstName, selected.lastName)}
                   </DialogTitle>
                   <p className="text-xs text-muted-foreground truncate">
                     {[selected.currentJobTitle, selected.currentCompany].filter(Boolean).join(" · ")}
@@ -705,7 +716,7 @@ export default function CandidatesManagementPage() {
 
               {/* ── slim footer ── */}
               <div className="flex items-center justify-between px-5 py-2.5 border-t border-border bg-muted/30 shrink-0">
-                <p className="text-[10px] text-muted-foreground">
+                <p suppressHydrationWarning className="text-[10px] text-muted-foreground">
                   Registered {new Date(selected.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                 </p>
                 {selected.videoUrl && (

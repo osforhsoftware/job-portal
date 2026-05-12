@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useForm, FormProvider } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
+import { FormStepper } from "@/components/ui/form-stepper"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -25,9 +25,19 @@ import {
 } from "./candidate-register-schema"
 
 const steps = [
-  { id: 1, name: "Personal Information", icon: User },
-  { id: 2, name: "Job & Profile", icon: Briefcase },
-]
+  {
+    id: 1,
+    name: "Personal Information",
+    subtitle: "Name, contact & account",
+    icon: User,
+  },
+  {
+    id: 2,
+    name: "Job & Profile",
+    subtitle: "Role, experience & documents",
+    icon: Briefcase,
+  },
+] as const
 
 /** @deprecated Use CandidateRegisterFormValues for new registration UI; kept for profile/edit and other flows */
 export type CandidateFormData = {
@@ -63,6 +73,8 @@ export type CandidateFormData = {
   cvFile: File | null
   videoFile: File | null
   photoFile: File | null
+  /** Set when editing profile (server URL after upload or from GET) */
+  photoUrl: string
   passportFile: File | null
   salaryRange: { min: number; max: number } | null
   visaCategory: string
@@ -110,7 +122,6 @@ export function CandidateRegistrationWizard() {
     setReferralCode(ref)
   }, [searchParams])
 
-  const progress = (currentStep / steps.length) * 100
   const acceptTerms = form.watch("acceptTerms")
 
   const handleNext = async () => {
@@ -257,42 +268,16 @@ export function CandidateRegistrationWizard() {
             </div>
           )}
 
-          <Progress value={progress} className="mb-6 h-2" />
-
-          <div className="flex justify-between">
-            {steps.map((step) => {
-              const StepIcon = step.icon
-              const isActive = step.id === currentStep
-              const isCompleted = step.id < currentStep
-
-              return (
-                <div key={step.id} className="flex flex-col items-center">
-                  <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${
-                      isCompleted
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : isActive
-                          ? "border-primary bg-background text-primary"
-                          : "border-border bg-background text-muted-foreground"
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <CheckCircle className="h-5 w-5" />
-                    ) : (
-                      <StepIcon className="h-5 w-5" />
-                    )}
-                  </div>
-                  <span
-                    className={`mt-2 hidden text-xs font-medium sm:block ${
-                      isActive ? "text-primary" : "text-muted-foreground"
-                    }`}
-                  >
-                    {step.name}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+          <FormStepper
+            className="mb-8"
+            currentStep={currentStep}
+            steps={steps.map((s) => ({
+              id: s.id,
+              title: s.name,
+              subtitle: s.subtitle,
+              icon: s.icon,
+            }))}
+          />
         </div>
 
         <Card className="mx-auto max-w-4xl border-border shadow-lg">

@@ -140,7 +140,7 @@ export default function CandidateLoginPage() {
                             <FormControl>
                               <Input
                                 type="email"
-                                placeholder="your@email.com"
+                                placeholder="Enter your email address"
                                 autoComplete="email"
                                 disabled={loading}
                                 {...field}

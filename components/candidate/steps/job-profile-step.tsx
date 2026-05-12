@@ -609,11 +609,23 @@ export function JobProfileStep({
               </FormControl>
               <div className="space-y-1">
                 <FormLabel htmlFor="terms" className="text-sm font-medium leading-snug cursor-pointer">
-                  I accept the Terms and Conditions and Privacy Policy *
+                  I accept the{" "}
+                  <a href="/terms" className="text-primary hover:underline font-normal" target="_blank" rel="noopener noreferrer">
+                    Terms of Service
+                  </a>
+                  {" "}and{" "}
+                  <a href="/privacy" className="text-primary hover:underline font-normal" target="_blank" rel="noopener noreferrer">
+                    Privacy Policy
+                  </a>{" "}*
                 </FormLabel>
                 <p className="text-xs text-muted-foreground">
-                  By checking this box, you agree to our terms of service and privacy policy.
-                  Please read them carefully before submitting your profile.
+                  By checking this box, you also agree to our{" "}
+                  <a href="/acceptable-use" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                    Acceptable Use Policy
+                  </a>{" "}and{" "}
+                  <a href="/cookies" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                    Cookie Policy
+                  </a>. Please read them before submitting your profile.
                 </p>
                 <FormMessage />
               </div>

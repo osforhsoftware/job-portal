@@ -615,7 +615,7 @@ export default function CompanyRegisterPage() {
                             <FormControl>
                               <Input
                                 type="email"
-                                placeholder="contact@company.com"
+                                placeholder="Enter your email address"
                                 autoComplete="email"
                                 {...field}
                               />

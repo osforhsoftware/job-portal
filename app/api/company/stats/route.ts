@@ -60,15 +60,20 @@ export async function GET(request: NextRequest) {
     )
 
     // Plan / access info for company
-    const isCorporate = company.isCorporate
     const subscriptionPlan = company.subscriptionPlan ?? null
     const subscriptionStatus = company.subscriptionStatus ?? null
+    const subscriptionDuration = company.subscriptionDuration ?? null
     const totalCVDownloads = company.totalCVDownloads ?? 0
+
+    // Diamond plan (enterprise) and legacy isCorporate flag both grant unlimited access
+    const isDiamondOrCorporate =
+      company.isCorporate ||
+      (subscriptionPlan === 'diamond' && subscriptionStatus === 'active')
 
     let cvDownloadLimit: number | null = null
     let isFree = false
 
-    if (isCorporate) {
+    if (isDiamondOrCorporate) {
       cvDownloadLimit = -1
       isFree = false
     } else if (subscriptionPlan && subscriptionStatus === 'active') {
@@ -84,7 +89,7 @@ export async function GET(request: NextRequest) {
       }
       isFree = false
     } else {
-      // No active paid subscription -> free tier
+      // No active paid subscription -> restricted free tier
       isFree = true
       cvDownloadLimit = 0
     }
@@ -102,7 +107,7 @@ export async function GET(request: NextRequest) {
         hiredThisMonth,
         companyName: company.name,
       },
-      recentDemands:       recentDemands.map((d) => ({
+      recentDemands: recentDemands.map((d) => ({
         id: d.id,
         jobTitle: d.jobTitle,
         location: d.location,
@@ -118,7 +123,9 @@ export async function GET(request: NextRequest) {
       plan: {
         level: subscriptionPlan,
         status: subscriptionStatus,
-        isCorporate,
+        duration: subscriptionDuration,
+        // isCorporate kept for backward-compat; true for Diamond plan and legacy corporate accounts
+        isCorporate: isDiamondOrCorporate,
         isFree,
         cvDownloadLimit,
         totalCVDownloads,

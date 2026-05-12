@@ -441,18 +441,18 @@ export default function AdminCompaniesPage() {
 
       {/* Detail & subscription dialog */}
       <Dialog open={!!selectedCompany} onOpenChange={(open) => !open && setSelectedCompany(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] min-h-0 w-full overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
-              {selectedCompany?.name}
+            <DialogTitle className="flex min-w-0 items-center gap-2">
+              <Briefcase className="h-5 w-5 shrink-0" />
+              <span className="min-w-0 break-words">{selectedCompany?.name}</span>
             </DialogTitle>
             <DialogDescription>Company details and subscription</DialogDescription>
           </DialogHeader>
           {selectedCompany && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
+            <div className="min-w-0 space-y-4">
+              <div className="grid min-w-0 grid-cols-2 gap-2 text-sm">
+                <div className="min-w-0 [overflow-wrap:anywhere] break-words">
                   <span className="text-muted-foreground">Contact</span>
                   <p className="font-medium">{selectedCompany.contactName}</p>
                   <p className="text-muted-foreground">{selectedCompany.contactEmail || selectedCompany.email}</p>
@@ -461,27 +461,27 @@ export default function AdminCompaniesPage() {
                     <p className="text-muted-foreground">{selectedCompany.contactPosition}</p>
                   )}
                 </div>
-                <div>
+                <div className="min-w-0 [overflow-wrap:anywhere] break-words">
                   <span className="text-muted-foreground">Industry / Size</span>
                   <p className="font-medium">{selectedCompany.industry || "—"}</p>
                   <p className="text-muted-foreground">{selectedCompany.companySize || "—"}</p>
                 </div>
-                <div>
+                <div className="min-w-0 [overflow-wrap:anywhere] break-words">
                   <span className="text-muted-foreground">Location</span>
                   <p>{selectedCompany.city && selectedCompany.country ? `${selectedCompany.city}, ${selectedCompany.country}` : selectedCompany.country || "—"}</p>
                 </div>
-                <div>
+                <div className="min-w-0 [overflow-wrap:anywhere] break-words">
                   <span className="text-muted-foreground">Trade license</span>
                   <p>{selectedCompany.tradeLicense || "—"}</p>
                 </div>
                 {selectedCompany.address && (
-                  <div className="col-span-2">
+                  <div className="col-span-2 min-w-0 [overflow-wrap:anywhere] break-words">
                     <span className="text-muted-foreground">Address</span>
                     <p>{selectedCompany.address}</p>
                   </div>
                 )}
                 {selectedCompany.website && (
-                  <div className="col-span-2">
+                  <div className="col-span-2 min-w-0 [overflow-wrap:anywhere] break-words">
                     <span className="text-muted-foreground">Website</span>
                     <p>
                       <a href={selectedCompany.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
@@ -491,7 +491,7 @@ export default function AdminCompaniesPage() {
                   </div>
                 )}
                 {selectedCompany.proofDocumentUrl && (
-                  <div className="col-span-2">
+                  <div className="col-span-2 min-w-0 [overflow-wrap:anywhere] break-words">
                     <span className="text-muted-foreground">Verification document</span>
                     <p>
                       <a
@@ -506,12 +506,12 @@ export default function AdminCompaniesPage() {
                   </div>
                 )}
                 {selectedCompany.description && (
-                  <div className="col-span-2">
+                  <div className="col-span-2 min-w-0 [overflow-wrap:anywhere] break-words">
                     <span className="text-muted-foreground">About company</span>
                     <p className="text-muted-foreground">{selectedCompany.description}</p>
                   </div>
                 )}
-                <div>
+                <div className="min-w-0 [overflow-wrap:anywhere] break-words">
                   <span className="text-muted-foreground">Subscription</span>
                   <p className="font-medium">{selectedCompany.subscriptionPlan || "—"}</p>
                   <p className="text-muted-foreground">
@@ -521,13 +521,13 @@ export default function AdminCompaniesPage() {
                       ` · Expires ${new Date(selectedCompany.subscriptionExpiresAt).toLocaleDateString()}`}
                   </p>
                 </div>
-                <div>
+                <div className="min-w-0 [overflow-wrap:anywhere] break-words">
                   <span className="text-muted-foreground">Stats</span>
                   <p>CV downloads: {selectedCompany.totalCVDownloads ?? 0} · Bids: {selectedCompany.totalBids ?? 0} · Interviews: {selectedCompany.totalInterviews ?? 0} · Hires: {selectedCompany.totalHires ?? 0}</p>
                 </div>
               </div>
 
-              <div className="border-t pt-4 space-y-3">
+              <div className="min-w-0 border-t pt-4 space-y-3">
                 <p className="text-sm font-medium">Update subscription (Super Admin)</p>
                 <div className="flex flex-wrap gap-2">
                   <Select value={subscriptionPlan} onValueChange={setSubscriptionPlan}>

@@ -67,6 +67,7 @@ import {
   Eye,
   Users,
   UserCheck,
+  User,
   ChevronsUpDown,
   Check,
   Globe,
@@ -75,7 +76,7 @@ import {
   ListFilter,
   ChevronDown,
 } from "lucide-react"
-import { formatRelativeTime, cn } from "@/lib/utils"
+import { formatRelativeTime, cn, distinctEntryPersonName } from "@/lib/utils"
 import { toast } from "sonner"
 import { BENEFITS } from "@/lib/job-config"
 import type { BenefitType } from "@/lib/job-config"
@@ -117,6 +118,7 @@ type PublicDemand = {
   createdAt: string
   joining: string
   companyName: string
+  createdByEmployeeName?: string
   quantity: number
   filledPositions: number
   status: string
@@ -230,6 +232,14 @@ function PublicDemandsListingInner({
 
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailDemand, setDetailDemand] = useState<PublicDemand | null>(null)
+  const detailEntryDisplay = useMemo(
+    () =>
+      distinctEntryPersonName(
+        detailDemand?.companyName,
+        detailDemand?.createdByEmployeeName,
+      ),
+    [detailDemand?.companyName, detailDemand?.createdByEmployeeName],
+  )
   const [filtersPanelOpen, setFiltersPanelOpen] = useState(false)
 
   const urlSyncSkip = useRef(true)
@@ -601,7 +611,7 @@ function PublicDemandsListingInner({
                 <div className="relative min-w-0 sm:col-span-2 lg:col-span-2">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Search title, company, location, skills, category…"
+                    placeholder="Search title, company, entry contact, location, skills, category…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9"
@@ -841,7 +851,12 @@ function PublicDemandsListingInner({
             </Card>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((job) => (
+              {filtered.map((job) => {
+                const entryDisplay = distinctEntryPersonName(
+                  job.companyName,
+                  job.createdByEmployeeName,
+                )
+                return (
                 <Card
                   key={job.id}
                   className="group flex flex-col border-border/70 transition-all duration-200 hover:border-primary/40 hover:shadow-lg"
@@ -856,6 +871,15 @@ function PublicDemandsListingInner({
                           <Building2 className="h-3.5 w-3.5 shrink-0" />
                           <span className="truncate">{job.companyName}</span>
                         </p>
+                        {entryDisplay && (
+                          <p
+                            className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"
+                            title="Demand entry person"
+                          >
+                            <User className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{entryDisplay}</span>
+                          </p>
+                        )}
                         {(job.jobCategoryName || job.jobSubCategoryName) && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {job.jobCategoryName && (
@@ -991,7 +1015,8 @@ function PublicDemandsListingInner({
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           )}
 
@@ -1019,9 +1044,19 @@ function PublicDemandsListingInner({
                 <DialogTitle className="text-left text-xl leading-snug">
                   {detailDemand.jobTitle}
                 </DialogTitle>
-                <p className="text-left text-sm text-muted-foreground">
-                  {detailDemand.companyName}
+                <p className="text-left text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Building2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>{detailDemand.companyName}</span>
                 </p>
+                {detailEntryDisplay && (
+                  <p
+                    className="text-left text-xs text-muted-foreground flex items-center gap-1.5"
+                    title="Demand entry person"
+                  >
+                    <User className="h-3 w-3 shrink-0" />
+                    <span>{detailEntryDisplay}</span>
+                  </p>
+                )}
                 {(detailDemand.jobCategoryName ||
                   detailDemand.jobSubCategoryName) && (
                   <div className="flex flex-wrap gap-2 pt-1">

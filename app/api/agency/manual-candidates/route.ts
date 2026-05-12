@@ -51,8 +51,16 @@ export async function POST(request: NextRequest) {
       agencyId = rawAgencyId
     }
 
-    const firstName = (formData.get('firstName') as string | null)?.trim() || ''
-    const lastName = (formData.get('lastName') as string | null)?.trim() || ''
+    const fullName = (formData.get('fullName') as string | null)?.trim() || ''
+    const rawFirstName = (formData.get('firstName') as string | null)?.trim() || ''
+    const rawLastName = (formData.get('lastName') as string | null)?.trim() || ''
+    let firstName = rawFirstName
+    let lastName = rawLastName
+    if (fullName && !firstName) {
+      const parts = fullName.split(/\s+/)
+      firstName = parts[0] || ''
+      lastName = parts.slice(1).join(' ') || parts[0] || ''
+    }
     const email = (formData.get('email') as string | null)?.trim().toLowerCase() || ''
     const phone = (formData.get('phone') as string | null)?.trim() || ''
     const dateOfBirth = (formData.get('dateOfBirth') as string | null)?.trim() || ''
@@ -70,9 +78,9 @@ export async function POST(request: NextRequest) {
 
     const cvFile = formData.get('cvUpload') as File | null
 
-    if (!firstName || !lastName || !email || !phone) {
+    if (!firstName || !email || !phone) {
       return NextResponse.json(
-        { error: 'First name, last name, email, and phone are required' },
+        { error: 'Full name, email, and phone are required' },
         { status: 400 }
       )
     }
@@ -86,9 +94,24 @@ export async function POST(request: NextRequest) {
 
     if (!jobCategories.length) {
       return NextResponse.json(
-        { error: 'Select at least one job category' },
+        { error: 'Select a job sub-category' },
         { status: 400 }
       )
+    }
+
+    let jobSubCategoryId: string | undefined
+    let jobCategoryId: string | undefined
+    for (const id of jobCategories) {
+      const sub = await db.jobSubCategories.getById(id)
+      if (sub) {
+        jobSubCategoryId = sub.id
+        jobCategoryId = sub.categoryId
+        break
+      }
+    }
+    if (!jobSubCategoryId) {
+      const parent = await db.jobCategories.getById(jobCategories[0])
+      if (parent) jobCategoryId = parent.id
     }
 
     if (!cvFile) {
@@ -154,6 +177,8 @@ export async function POST(request: NextRequest) {
       industries: [],
       jobTypes: [],
       jobCategories,
+      ...(jobSubCategoryId ? { jobSubCategoryId } : {}),
+      ...(jobCategoryId ? { jobCategoryId } : {}),
       highestEducation: '',
       fieldOfStudy: '',
       skills,

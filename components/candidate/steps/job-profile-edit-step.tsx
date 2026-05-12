@@ -18,13 +18,13 @@ import {
 import {
   Video,
   Upload,
-  Play,
   FileText,
   Check,
   X,
   Circle,
   Square,
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { JobCategorySelector } from "../job-category-selector"
 import type { CandidateFormData } from "../registration-wizard"
 
@@ -50,6 +50,28 @@ const qualifications = [
   "Other"
 ]
 
+const noticePeriods = [
+  "Immediate",
+  "1 Week",
+  "2 Weeks",
+  "1 Month",
+  "2 Months",
+  "3 Months",
+  "Currently Serving Notice",
+]
+
+const industries = [
+  "Construction", "Healthcare", "Hospitality", "IT & Technology",
+  "Manufacturing", "Retail", "Finance & Banking", "Education",
+  "Transportation & Logistics", "Oil & Gas", "Real Estate",
+  "Telecommunications", "Government", "Engineering", "Other",
+]
+
+const jobTypes = [
+  "Full-time", "Part-time", "Contract", "Temporary",
+  "Freelance", "Internship",
+]
+
 const MAX_DURATION = 60 // 1 minute max
 const MAX_CV_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -60,6 +82,7 @@ interface JobProfileEditStepProps {
 
 /** Profile edit flow (local state); registration uses `JobProfileStep` with react-hook-form. */
 export function JobProfileEditStep({ formData, updateFormData }: JobProfileEditStepProps) {
+  const [skillInput, setSkillInput] = useState("")
   const [videoMode, setVideoMode] = useState<"select" | "record" | "upload" | "preview">("select")
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
@@ -207,6 +230,33 @@ export function JobProfileEditStep({ formData, updateFormData }: JobProfileEditS
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
+  const removeIndustry = (industry: string) => {
+    updateFormData({ industries: (formData.industries || []).filter((i) => i !== industry) })
+  }
+
+  const industriesToAdd = industries.filter((i) => !(formData.industries || []).includes(i))
+
+  const handleJobTypeToggle = (jobType: string) => {
+    const current = formData.jobTypes || []
+    if (current.includes(jobType)) {
+      updateFormData({ jobTypes: current.filter((j) => j !== jobType) })
+    } else {
+      updateFormData({ jobTypes: [...current, jobType] })
+    }
+  }
+
+  const addSkillTag = () => {
+    const t = skillInput.trim()
+    if (t && !formData.skills?.includes(t)) {
+      updateFormData({ skills: [...(formData.skills || []), t] })
+      setSkillInput("")
+    }
+  }
+
+  const removeSkill = (skill: string) => {
+    updateFormData({ skills: formData.skills?.filter((s) => s !== skill) })
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -248,7 +298,9 @@ export function JobProfileEditStep({ formData, updateFormData }: JobProfileEditS
           <Label>Qualification *</Label>
           <Select
             value={formData.qualification}
-            onValueChange={(value) => updateFormData({ qualification: value })}
+            onValueChange={(value) =>
+              updateFormData({ qualification: value, highestEducation: value })
+            }
             required
           >
             <SelectTrigger>
@@ -262,6 +314,144 @@ export function JobProfileEditStep({ formData, updateFormData }: JobProfileEditS
               ))}
             </SelectContent>
           </Select>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-5">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Optional</h3>
+          <p className="text-xs text-muted-foreground">
+            Current role, notice period, industries, job types, and skills improve how you match open positions.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="edit-currentJobTitle">Current job title</Label>
+            <Input
+              id="edit-currentJobTitle"
+              placeholder="e.g. Senior Software Engineer"
+              value={formData.currentJobTitle}
+              onChange={(e) => updateFormData({ currentJobTitle: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Notice period</Label>
+            <Select
+              value={formData.noticePeriod}
+              onValueChange={(value) => updateFormData({ noticePeriod: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select notice period" />
+              </SelectTrigger>
+              <SelectContent>
+                {noticePeriods.map((period) => (
+                  <SelectItem key={period} value={period.toLowerCase()}>
+                    {period}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Label>Industries</Label>
+          <p className="text-xs text-muted-foreground">Add each industry from the list below. Remove a tag to change your selection.</p>
+          {formData.industries && formData.industries.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {formData.industries.map((industry) => (
+                <Badge key={industry} variant="secondary" className="gap-1 py-1">
+                  {industry}
+                  <button
+                    type="button"
+                    onClick={() => removeIndustry(industry)}
+                    className="ml-1 rounded-full hover:bg-muted"
+                    aria-label={`Remove ${industry}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+          {industriesToAdd.length > 0 ? (
+            <Select
+              key={(formData.industries || []).join("|")}
+              onValueChange={(industry) => {
+                if (!(formData.industries || []).includes(industry)) {
+                  updateFormData({ industries: [...(formData.industries || []), industry] })
+                }
+              }}
+            >
+              <SelectTrigger className="w-full sm:max-w-md">
+                <SelectValue placeholder="Add an industry" />
+              </SelectTrigger>
+              <SelectContent>
+                {industriesToAdd.map((industry) => (
+                  <SelectItem key={industry} value={industry}>
+                    {industry}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              All listed industries are added. Remove one above to pick another.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <Label>Job types (select all that apply)</Label>
+          <div className="flex flex-wrap gap-4">
+            {jobTypes.map((type) => (
+              <div key={type} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`edit-jt-${type}`}
+                  checked={formData.jobTypes?.includes(type)}
+                  onCheckedChange={() => handleJobTypeToggle(type)}
+                />
+                <label htmlFor={`edit-jt-${type}`} className="text-sm text-foreground cursor-pointer">
+                  {type}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Label>Skills</Label>
+          <p className="text-xs text-muted-foreground">Type a skill and press Enter to add it as a tag.</p>
+          {formData.skills && formData.skills.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {formData.skills.map((skill) => (
+                <Badge key={skill} variant="secondary" className="gap-1 py-1">
+                  {skill}
+                  <button
+                    type="button"
+                    onClick={() => removeSkill(skill)}
+                    className="ml-1 rounded-full hover:bg-muted"
+                    aria-label={`Remove ${skill}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+          <Input
+            id="edit-skills-input"
+            placeholder="e.g. Project management — press Enter"
+            value={skillInput}
+            onChange={(e) => setSkillInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                addSkillTag()
+              }
+            }}
+          />
         </div>
       </div>
 
@@ -335,11 +525,11 @@ export function JobProfileEditStep({ formData, updateFormData }: JobProfileEditS
         <div className="rounded-lg bg-primary/5 p-4 mb-4">
           <h3 className="mb-2 text-sm font-medium text-foreground">Tips for a Great Video</h3>
           <ul className="space-y-1 text-xs text-muted-foreground">
-            <li>ΓÇó Introduce yourself and mention your profession</li>
-            <li>ΓÇó Highlight 2-3 key skills and achievements</li>
-            <li>ΓÇó Speak clearly and maintain eye contact</li>
-            <li>ΓÇó Good lighting and quiet background</li>
-            <li>ΓÇó Keep it under 60 seconds</li>
+            <li>• Introduce yourself and mention your profession</li>
+            <li>• Highlight 2-3 key skills and achievements</li>
+            <li>• Speak clearly and maintain eye contact</li>
+            <li>• Good lighting and quiet background</li>
+            <li>• Keep it under 60 seconds</li>
           </ul>
         </div>
 
@@ -539,11 +729,23 @@ export function JobProfileEditStep({ formData, updateFormData }: JobProfileEditS
           />
           <div className="space-y-1">
             <Label htmlFor="terms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              I accept the Terms and Conditions and Privacy Policy *
+              I accept the{" "}
+              <a href="/terms" className="text-primary hover:underline font-normal" target="_blank" rel="noopener noreferrer">
+                Terms of Service
+              </a>
+              {" "}and{" "}
+              <a href="/privacy" className="text-primary hover:underline font-normal" target="_blank" rel="noopener noreferrer">
+                Privacy Policy
+              </a>{" "}*
             </Label>
             <p className="text-xs text-muted-foreground">
-              By checking this box, you agree to our terms of service and privacy policy. 
-              Please read them carefully before submitting your profile.
+              By checking this box, you also agree to our{" "}
+              <a href="/acceptable-use" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                Acceptable Use Policy
+              </a>{" "}and{" "}
+              <a href="/cookies" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                Cookie Policy
+              </a>. Please read them before submitting your profile.
             </p>
           </div>
         </div>

@@ -1,8 +1,10 @@
 ﻿"use client"
 
+import { useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -10,6 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2, UserRound, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import type { CandidateFormData } from "../registration-wizard"
 
 const nationalities = [
@@ -23,6 +28,11 @@ const genders = ["Male", "Female", "Prefer not to say"]
 
 const maritalStatuses = ["Single", "Married", "Divorced", "Widowed", "Prefer not to say"]
 
+const commonLanguages = [
+  "English", "Arabic", "Hindi", "Urdu", "Tagalog", "Bengali", "Tamil",
+  "Malayalam", "Nepali", "French", "Spanish", "Mandarin", "Other",
+]
+
 interface PersonalInfoEditStepProps {
   formData: CandidateFormData
   updateFormData: (data: Partial<CandidateFormData>) => void
@@ -30,6 +40,51 @@ interface PersonalInfoEditStepProps {
 
 /** Profile edit flow (local state); registration uses `PersonalInfoStep` with react-hook-form. */
 export function PersonalInfoEditStep({ formData, updateFormData }: PersonalInfoEditStepProps) {
+  const { toast } = useToast()
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const [photoUploading, setPhotoUploading] = useState(false)
+
+  const removeLanguage = (lang: string) => {
+    updateFormData({ languages: (formData.languages || []).filter((l) => l !== lang) })
+  }
+
+  const languagesToAdd = commonLanguages.filter((l) => !(formData.languages || []).includes(l))
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Profile photo must be 2MB or less.", variant: "destructive" })
+      return
+    }
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please choose an image file.", variant: "destructive" })
+      return
+    }
+    setPhotoUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("type", "photo")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Upload failed")
+      }
+      updateFormData({ photoUrl: data.url })
+      toast({ title: "Photo uploaded", description: "Remember to save your profile to keep changes." })
+    } catch (err) {
+      toast({
+        title: "Upload failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setPhotoUploading(false)
+      if (photoInputRef.current) photoInputRef.current.value = ""
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -37,6 +92,105 @@ export function PersonalInfoEditStep({ formData, updateFormData }: PersonalInfoE
         <p className="text-sm text-muted-foreground">
           Please provide your basic details
         </p>
+      </div>
+
+      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Optional</h3>
+          <p className="text-xs text-muted-foreground">Languages and profile photo help employers understand you better.</p>
+        </div>
+
+        <div className="space-y-3">
+          <Label>Languages</Label>
+          {formData.languages && formData.languages.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {formData.languages.map((lang) => (
+                <Badge key={lang} variant="secondary" className="gap-1 py-1">
+                  {lang}
+                  <button
+                    type="button"
+                    onClick={() => removeLanguage(lang)}
+                    className="ml-1 rounded-full hover:bg-muted"
+                    aria-label={`Remove ${lang}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+          {languagesToAdd.length > 0 ? (
+            <Select
+              key={(formData.languages || []).join("|")}
+              onValueChange={(lang) => {
+                if (!(formData.languages || []).includes(lang)) {
+                  updateFormData({ languages: [...(formData.languages || []), lang] })
+                }
+              }}
+            >
+              <SelectTrigger className="w-full sm:max-w-md">
+                <SelectValue placeholder="Add a language" />
+              </SelectTrigger>
+              <SelectContent>
+                {languagesToAdd.map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {lang}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              All preset languages are added. Remove one above to pick another.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Profile photo</Label>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
+              {formData.photoUrl ? (
+                <img src={formData.photoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <UserRound className="h-9 w-9 text-muted-foreground" />
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoSelect}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={photoUploading}
+                onClick={() => photoInputRef.current?.click()}
+              >
+                {photoUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading…
+                  </>
+                ) : formData.photoUrl ? (
+                  "Change photo"
+                ) : (
+                  "Upload photo"
+                )}
+              </Button>
+              {formData.photoUrl ? (
+                <Button type="button" variant="ghost" size="sm" onClick={() => updateFormData({ photoUrl: "" })}>
+                  Remove
+                </Button>
+              ) : null}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">JPG or PNG, max 2MB.</p>
+        </div>
       </div>
 
       {/* Full Name */}
@@ -57,7 +211,7 @@ export function PersonalInfoEditStep({ formData, updateFormData }: PersonalInfoE
         <Input
           id="email"
           type="email"
-          placeholder="your@email.com"
+          placeholder="Enter your email address"
           value={formData.email}
           onChange={(e) => updateFormData({ email: e.target.value })}
           required

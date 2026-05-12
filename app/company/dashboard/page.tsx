@@ -10,6 +10,7 @@ import {
   CheckCircle2, XCircle, Star, MessageSquare, ArrowUpRight, AlertTriangle,
 } from "lucide-react"
 import { PageLoader } from "@/components/page-loader"
+import { distinctEntryPersonName } from "@/lib/utils"
 
 interface Stats {
   activeDemands: number
@@ -221,10 +222,10 @@ export default function CompanyDashboard() {
               </div>
               <div className="space-y-0.5">
                 <p className="text-xs font-semibold">
-                  You used 3/3 jobs on the free plan
+                  You have reached the free plan limit (3 demands)
                 </p>
                 <p className="text-[11px] text-amber-900/80 dark:text-amber-100/80">
-                  Upgrade to Pro to post more job demands, invite additional roles, and unlock advanced analytics.
+                  Upgrade to a Bronze, Silver, Gold, or Diamond plan to post more demands, unlock CV downloads, and access premium hiring features.
                 </p>
               </div>
             </div>
@@ -234,7 +235,7 @@ export default function CompanyDashboard() {
               size="sm"
               className="h-8 w-full shrink-0 rounded-full border-amber-400/80 bg-amber-100/70 px-3 text-[11px] font-semibold text-amber-900 hover:bg-amber-100 sm:w-auto dark:border-amber-500/80 dark:bg-transparent dark:text-amber-50"
             >
-              <a href="/pricing">Upgrade Now</a>
+              <a href="/pricing">View Plans</a>
             </Button>
           </div>
         )}
@@ -336,6 +337,10 @@ export default function CompanyDashboard() {
                   {filteredDemands.map(d => {
                     const total = d.positions ?? d.quantity ?? 0
                     const fillPct = total > 0 ? Math.round((d.filledPositions / total) * 100) : 0
+                    const entryDisplay = distinctEntryPersonName(
+                      stats?.companyName,
+                      d.createdByEmployeeName,
+                    )
                     return (
                       <Link key={d.id} href={`/company/demands/${d.id}`}
                         className="group flex min-w-0 max-w-full flex-col gap-2 rounded-xl border border-transparent p-3.5 transition-all hover:border-border hover:bg-muted/40">
@@ -351,10 +356,13 @@ export default function CompanyDashboard() {
                               <span className="flex items-center gap-1">
                                 <Users className="h-3 w-3" />{d.submissionCount} submitted
                               </span>
-                              {d.createdByEmployeeName && (
-                                <span className="flex items-center gap-1">
+                              {entryDisplay && (
+                                <span
+                                  className="flex items-center gap-1"
+                                  title="Demand entry person"
+                                >
                                   <UserCheck className="h-3 w-3" />
-                                  {d.createdByEmployeeName}
+                                  {entryDisplay}
                                 </span>
                               )}
                               <span className="flex items-center gap-1">

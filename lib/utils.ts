@@ -54,3 +54,30 @@ export async function parseJsonResponse<T = Record<string, unknown>>(
     throw new Error("Invalid response from server.")
   }
 }
+
+/**
+ * Returns a candidate's display name. Prevents duplication when firstName === lastName
+ * (e.g. "nabeel nabeel" stored from old single-name entries → shows as "nabeel").
+ */
+export function formatCandidateName(firstName = "", lastName = ""): string {
+  const fn = firstName.trim()
+  const ln = lastName.trim()
+  if (!ln || ln.toLowerCase() === fn.toLowerCase()) return fn
+  return `${fn} ${ln}`
+}
+
+/**
+ * Demand entry person to display only when it is not the same string as the company line
+ * (avoids duplicate name when legacy rows stored the contact as `companyName`).
+ */
+export function distinctEntryPersonName(
+  companyName: string | undefined,
+  entryName: string | undefined | null,
+): string | null {
+  const e = entryName?.trim()
+  if (!e) return null
+  const c = (companyName ?? "").trim()
+  if (!c) return e
+  if (e.toLowerCase() === c.toLowerCase()) return null
+  return e
+}

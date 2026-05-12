@@ -65,6 +65,7 @@ type CompanyRow = {
   subscriptionPlan?: string
   subscriptionStatus?: string
   subscriptionExpiresAt?: string
+  subscriptionDuration?: string
   createdAt: string
 }
 
@@ -108,6 +109,7 @@ export default function AdminSubscriptionsPage() {
     subscriptionPlan: "",
     subscriptionStatus: "",
     subscriptionExpiresAt: "",
+    subscriptionDuration: "monthly",
   })
   const [saving, setSaving] = useState(false)
 
@@ -144,6 +146,12 @@ export default function AdminSubscriptionsPage() {
     }
   }
 
+  const defaultExpiryDate = () => {
+    const d = new Date()
+    d.setMonth(d.getMonth() + 1)
+    return d.toISOString().slice(0, 10)
+  }
+
   const openEditAgency = (a: AgencyRow) => {
     setEditEntity({ type: "agency", id: a.id, name: a.name })
     setEditForm({
@@ -151,7 +159,8 @@ export default function AdminSubscriptionsPage() {
       subscriptionStatus: a.subscriptionStatus || "expired",
       subscriptionExpiresAt: a.subscriptionExpiresAt
         ? a.subscriptionExpiresAt.slice(0, 10)
-        : "",
+        : defaultExpiryDate(),
+      subscriptionDuration: "monthly",
     })
     setEditOpen(true)
   }
@@ -163,7 +172,8 @@ export default function AdminSubscriptionsPage() {
       subscriptionStatus: c.subscriptionStatus || "expired",
       subscriptionExpiresAt: c.subscriptionExpiresAt
         ? c.subscriptionExpiresAt.slice(0, 10)
-        : "",
+        : defaultExpiryDate(),
+      subscriptionDuration: c.subscriptionDuration || "monthly",
     })
     setEditOpen(true)
   }
@@ -182,6 +192,7 @@ export default function AdminSubscriptionsPage() {
           subscriptionPlan: editForm.subscriptionPlan,
           subscriptionStatus: editForm.subscriptionStatus,
           subscriptionExpiresAt: editForm.subscriptionExpiresAt || undefined,
+          subscriptionDuration: editForm.subscriptionDuration || undefined,
         }),
       })
       const data = await res.json()
@@ -417,6 +428,7 @@ export default function AdminSubscriptionsPage() {
                               <TableHead>Company</TableHead>
                               <TableHead>Contact</TableHead>
                               <TableHead>Plan</TableHead>
+                              <TableHead>Duration</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Expires</TableHead>
                               <TableHead className="w-[80px]">Actions</TableHead>
@@ -427,7 +439,18 @@ export default function AdminSubscriptionsPage() {
                               <TableRow key={c.id}>
                                 <TableCell className="font-medium">{c.name}</TableCell>
                                 <TableCell>{c.contactName || c.contactEmail}</TableCell>
-                                <TableCell className="capitalize">{c.subscriptionPlan || "—"}</TableCell>
+                                <TableCell className="capitalize">
+                                  {c.subscriptionPlan === "diamond" ? (
+                                    <span className="inline-flex items-center gap-1 font-medium text-violet-600 dark:text-violet-400">
+                                      ◆ Diamond
+                                    </span>
+                                  ) : (
+                                    c.subscriptionPlan || "—"
+                                  )}
+                                </TableCell>
+                                <TableCell className="capitalize">
+                                  {c.subscriptionDuration || "—"}
+                                </TableCell>
                                 <TableCell>
                                   <Badge variant={statusVariant(c.subscriptionStatus || "")}>
                                     {c.subscriptionStatus || "—"}
@@ -530,9 +553,11 @@ export default function AdminSubscriptionsPage() {
                             {p.charAt(0).toUpperCase() + p.slice(1)}
                           </SelectItem>
                         ))
-                      : ["bronze", "silver", "gold"].map((p) => (
+                      : ["bronze", "silver", "gold", "diamond"].map((p) => (
                           <SelectItem key={p} value={p}>
-                            {p.charAt(0).toUpperCase() + p.slice(1)}
+                            {p === "diamond"
+                              ? "Diamond (Enterprise)"
+                              : p.charAt(0).toUpperCase() + p.slice(1)}
                           </SelectItem>
                         ))}
                   </SelectContent>
@@ -554,9 +579,27 @@ export default function AdminSubscriptionsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {editEntity.type === "company" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Billing Duration</label>
+                  <Select
+                    value={editForm.subscriptionDuration}
+                    onValueChange={(v) => setEditForm((f) => ({ ...f, subscriptionDuration: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-1">
-                  <Calendar className="h-4 w-4" /> Expires (optional)
+                  <Calendar className="h-4 w-4" /> Expiry date
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">(auto: 1 month from today)</span>
                 </label>
                 <Input
                   type="date"

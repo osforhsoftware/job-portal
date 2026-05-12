@@ -1,7 +1,6 @@
 import React from "react"
 import type { Metadata, Viewport } from 'next'
 import dynamic from 'next/dynamic'
-import { Inter, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
@@ -9,9 +8,6 @@ const ThemeProviderWrapper = dynamic(
   () => import('@/components/theme-provider-wrapper'),
   { ssr: true }
 )
-
-const _inter = Inter({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'ONEMYJOB - Smart Recruitment & Bidding Platform',
@@ -39,7 +35,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="font-sans antialiased min-h-screen overflow-x-hidden" suppressHydrationWarning>
+      <head suppressHydrationWarning>
+        <script
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+  var o=new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(function(n){if(n.nodeType===1){n.querySelectorAll && n.querySelectorAll('[bis_skin_checked]').forEach(function(el){el.removeAttribute('bis_skin_checked')});if(n.hasAttribute && n.hasAttribute('bis_skin_checked'))n.removeAttribute('bis_skin_checked')}})})});o.observe(document.documentElement,{attributes:true,childList:true,subtree:true});})();`,
+          }}
+        />
+      </head>
+      <body
+        className="font-sans font-normal antialiased min-h-screen overflow-x-hidden"
+        suppressHydrationWarning
+      >
         <ThemeProviderWrapper>
           {children}
         </ThemeProviderWrapper>

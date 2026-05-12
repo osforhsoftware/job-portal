@@ -92,6 +92,9 @@ export interface Candidate {
   updatedAt: string
 }
 
+export type PerformanceTier = 'basic' | 'growth' | 'elite'
+export type RatingLevel = 'elite' | 'good' | 'average' | 'risk'
+
 export interface Agency {
   id: string
   userId: string
@@ -126,6 +129,14 @@ export interface Agency {
   totalSelections: number
   totalRevenue: number
   totalCommission: number
+  // Performance tracking (target/bonus/penalty system)
+  monthlyClosures?: number
+  currentTier?: PerformanceTier
+  performanceScore?: number
+  ratingLevel?: RatingLevel
+  qualityFlag?: boolean
+  feedbackScore?: number // 0..100, set by admin/companies
+  lastTierComputedAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -161,10 +172,11 @@ export interface Company {
   email: string
   phone: string
   type: 'regular' | 'corporate'
-  subscriptionPlan?: 'bronze' | 'silver' | 'gold',
+  subscriptionPlan?: 'bronze' | 'silver' | 'gold' | 'diamond'
   subscriptionStatus?: 'active' | 'expired' | 'cancelled'
   subscriptionExpiresAt?: string
-  // Corporate companies get free access
+  subscriptionDuration?: 'monthly' | 'yearly'
+  // Diamond plan companies get full enterprise access (replaces legacy isCorporate)
   isCorporate: boolean
   // Stats
   totalCVDownloads: number
@@ -193,6 +205,7 @@ export interface Subscription {
   entityType: 'agency' | 'company'
   entityId: string
   plan: string
+  duration?: 'monthly' | 'yearly'
   amount: number
   status: 'active' | 'expired' | 'cancelled'
   startDate: string
@@ -204,14 +217,17 @@ export interface Plan {
   id: string
   name: string
   type: 'agency' | 'company'
-  level: string // basic/silver/gold/platinum or bronze/silver/gold
+  level: string // basic/silver/gold/platinum or bronze/silver/gold/diamond
   price: number
+  yearlyPrice?: number // discounted yearly price (optional)
   features: {
     cvUploads?: number
     biddingLimit?: number
     jobOffers?: number
     cvDownloads?: number
     unlimitedDownloads?: boolean
+    prioritySupport?: boolean
+    advancedManagement?: boolean
   }
   isActive: boolean
   createdAt: string
@@ -261,6 +277,17 @@ export interface Agent {
   totalReferrals: number
   totalPlacements: number
   totalEarnings: number
+  // Multi-level commission (15% main, 10% sub-agent)
+  parentAgentId?: string
+  isMainAgent?: boolean
+  // Performance tracking (target/bonus/penalty system)
+  monthlyClosures?: number
+  currentTier?: PerformanceTier
+  performanceScore?: number
+  ratingLevel?: RatingLevel
+  qualityFlag?: boolean
+  feedbackScore?: number // 0..100, set by admin/companies
+  lastTierComputedAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -374,6 +401,14 @@ export interface Application {
   commission: number
   submittedAt: string
   updatedAt: string
+  // Performance / commission engine inputs
+  selectedAt?: string
+  daysToClose?: number
+  isHighValueDemand?: boolean
+  highValueBonusAmount?: number // AED 100..300, set by admin/company
+  fromConvertedDemand?: boolean // demand-generation bonus eligibility
+  qualityFlag?: boolean // unlocks quality bonus
+  placementValue?: number // total AED earned for this placement (used by engine)
 }
 
 export interface AgentPoint{
@@ -386,6 +421,98 @@ export interface AgentPoint{
   demandId: string
   companyId: string
   createdAt: string
+}
+
+export type BonusType =
+  | 'tier'
+  | 'speed'
+  | 'demand_generation'
+  | 'high_value_demand'
+  | 'quality'
+
+export interface BonusRecord {
+  id: string
+  entityType: 'agent' | 'agency'
+  entityId: string
+  agencyId?: string
+  applicationId?: string
+  bonusType: BonusType
+  percent?: number
+  flatAmount?: number
+  amount: number
+  description?: string
+  periodMonth: string // "YYYY-MM"
+  createdAt: string
+}
+
+export interface PenaltyRecord {
+  id: string
+  entityType: 'agent' | 'agency'
+  entityId: string
+  agencyId?: string
+  reason: 'below_minimum_target' | 'quality_breach'
+  percent: number
+  amount: number
+  periodMonth: string
+  createdAt: string
+}
+
+export interface Wallet {
+  id: string
+  entityType: 'agent' | 'agency'
+  entityId: string
+  balance: number
+  totalCredited: number
+  totalDebited: number
+  updatedAt: string
+}
+
+export type WalletTransactionType = 'commission' | 'bonus' | 'penalty' | 'payout'
+
+export interface WalletTransaction {
+  id: string
+  walletId: string
+  entityType: 'agent' | 'agency'
+  entityId: string
+  type: WalletTransactionType
+  amount: number // negative for penalty/payout
+  reference?: string
+  description: string
+  createdAt: string
+}
+
+export interface CommissionRule {
+  id: 'global'
+  agent: {
+    minTarget: number
+    standardTarget: number
+    highTarget: number
+    belowMinPenaltyPercent: number
+    bonusTiers: Array<{ closures: number; percent: number }>
+    mainCommissionPercent: number
+    subCommissionPercent: number
+  }
+  agency: {
+    minTarget: number
+    standardTarget: number
+    highTarget: number
+    bonusTiers: Array<{ closures: number; percent: number }>
+  }
+  speed: { within3Days: number; within7Days: number }
+  demand: {
+    conversionPercent: number
+    highValueMin: number
+    highValueMax: number
+  }
+  quality: { bonusPercent: number }
+  scoreWeights: {
+    closures: number
+    speed: number
+    quality: number
+    feedback: number
+  }
+  ratingThresholds: { elite: number; good: number; average: number }
+  updatedAt: string
 }
 
 export interface CandidateSource {
@@ -568,7 +695,8 @@ export const db = {
         { $set: updateDoc },
         { returnDocument: 'after' }
       )
-      return result?.value ? toInterface<User>(result.value) : null
+      const doc = result?.value ?? result
+      return doc ? toInterface<User>(doc) : null
     },
   },
   candidates: {
@@ -629,7 +757,8 @@ export const db = {
         { $set: updateDoc },
         { returnDocument: 'after' }
       )
-      return result?.value ? toInterface<Candidate>(result.value) : null
+      const doc = result?.value ?? result
+      return doc ? toInterface<Candidate>(doc) : null
     },
   },
   agencies: {
@@ -686,7 +815,8 @@ export const db = {
         { $set: updateDoc },
         { returnDocument: 'after' }
       )
-      return result?.value ? toInterface<Agency>(result.value) : null
+      const doc = result?.value ?? result
+      return doc ? toInterface<Agency>(doc) : null
     },
     delete: async (id: string): Promise<boolean> => {
       const db = await getDatabase()
@@ -743,7 +873,8 @@ export const db = {
         { $set: updateDoc },
         { returnDocument: 'after' }
       )
-      return result?.value ? toInterface<Company>(result.value) : null
+      const doc = result?.value ?? result
+      return doc ? toInterface<Company>(doc) : null
     },
   },
   bids: {
@@ -786,7 +917,8 @@ export const db = {
         { $set: updateDoc },
         { returnDocument: 'after' }
       )
-      return result?.value ? toInterface<Bid>(result.value) : null
+      const doc = result?.value ?? result
+      return doc ? toInterface<Bid>(doc) : null
     },
   },
   subscriptions: {
@@ -866,7 +998,8 @@ export const db = {
         { $set: updateDoc },
         { returnDocument: 'after' }
       )
-      return result?.value ? toInterface<Interview>(result.value) : null
+      const doc = result?.value ?? result
+      return doc ? toInterface<Interview>(doc) : null
     },
   },
   payments: {
@@ -988,7 +1121,8 @@ export const db = {
       const result = await db.collection('agents').findOneAndUpdate(
         query, { $set: updateDoc }, { returnDocument: 'after' }
       )
-      return result?.value ? toInterface<Agent>(result.value) : null
+      const doc = result?.value ?? result
+      return doc ? toInterface<Agent>(doc) : null
     },
     delete: async (id: string): Promise<boolean> => {
       const db = await getDatabase()
@@ -1061,7 +1195,8 @@ export const db = {
       const result = await db.collection('demands').findOneAndUpdate(
         query, { $set: updateDoc }, { returnDocument: 'after' }
       )
-      return result?.value ? toInterface<Demand>(result.value) : null
+      const doc = result?.value ?? result
+      return doc ? toInterface<Demand>(doc) : null
     },
     delete: async (id: string): Promise<boolean> => {
       const db = await getDatabase()
@@ -1152,7 +1287,8 @@ export const db = {
         { $set: updates },
         { returnDocument: 'after' }
       )
-      return result?.value ? toInterface<DemandEditRequest>(result.value) : null
+      const doc = result?.value ?? result
+      return doc ? toInterface<DemandEditRequest>(doc) : null
     },
   },
   applications: {
@@ -1194,7 +1330,8 @@ export const db = {
       const result = await db.collection('applications').findOneAndUpdate(
         query, { $set: updateDoc }, { returnDocument: 'after' }
       )
-      return result?.value ? toInterface<Application>(result.value) : null
+      const doc = result?.value ?? result
+      return doc ? toInterface<Application>(doc) : null
     },
   },
   candidateSources: {
@@ -1232,6 +1369,140 @@ export const db = {
       const db = await getDatabase()
       const points = await db.collection('agentPoints').find({ agencyId }).sort({ createdAt: -1 }).toArray()
       return points.map(doc => toInterface<AgentPoint>(doc))
+    },
+  },
+  bonuses: {
+    create: async (bonus: Omit<BonusRecord, 'id' | 'createdAt'>): Promise<BonusRecord> => {
+      const dbConn = await getDatabase()
+      const newBonus = { ...bonus, createdAt: new Date().toISOString() }
+      const result = await dbConn.collection('bonuses').insertOne(newBonus)
+      return toInterface<BonusRecord>({ ...newBonus, _id: result.insertedId })
+    },
+    getByEntity: async (
+      entityType: 'agent' | 'agency',
+      entityId: string,
+      periodMonth?: string,
+    ): Promise<BonusRecord[]> => {
+      const dbConn = await getDatabase()
+      const filter: Record<string, unknown> = { entityType, entityId }
+      if (periodMonth) filter.periodMonth = periodMonth
+      const list = await dbConn
+        .collection('bonuses')
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .toArray()
+      return list.map((doc) => toInterface<BonusRecord>(doc))
+    },
+  },
+  penalties: {
+    create: async (
+      penalty: Omit<PenaltyRecord, 'id' | 'createdAt'>,
+    ): Promise<PenaltyRecord> => {
+      const dbConn = await getDatabase()
+      const newPenalty = { ...penalty, createdAt: new Date().toISOString() }
+      const result = await dbConn.collection('penalties').insertOne(newPenalty)
+      return toInterface<PenaltyRecord>({ ...newPenalty, _id: result.insertedId })
+    },
+    getByEntity: async (
+      entityType: 'agent' | 'agency',
+      entityId: string,
+      periodMonth?: string,
+    ): Promise<PenaltyRecord[]> => {
+      const dbConn = await getDatabase()
+      const filter: Record<string, unknown> = { entityType, entityId }
+      if (periodMonth) filter.periodMonth = periodMonth
+      const list = await dbConn
+        .collection('penalties')
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .toArray()
+      return list.map((doc) => toInterface<PenaltyRecord>(doc))
+    },
+  },
+  wallets: {
+    getOrCreate: async (
+      entityType: 'agent' | 'agency',
+      entityId: string,
+    ): Promise<Wallet> => {
+      const dbConn = await getDatabase()
+      const existing = await dbConn
+        .collection('wallets')
+        .findOne({ entityType, entityId })
+      if (existing) return toInterface<Wallet>(existing)
+      const now = new Date().toISOString()
+      const newWallet = {
+        entityType,
+        entityId,
+        balance: 0,
+        totalCredited: 0,
+        totalDebited: 0,
+        updatedAt: now,
+      }
+      const result = await dbConn.collection('wallets').insertOne(newWallet)
+      return toInterface<Wallet>({ ...newWallet, _id: result.insertedId })
+    },
+    credit: async (
+      entityType: 'agent' | 'agency',
+      entityId: string,
+      amount: number,
+    ): Promise<Wallet> => {
+      const dbConn = await getDatabase()
+      const wallet = await db.wallets.getOrCreate(entityType, entityId)
+      const now = new Date().toISOString()
+      await dbConn
+        .collection('wallets')
+        .updateOne(
+          { entityType, entityId },
+          {
+            $inc: {
+              balance: amount,
+              totalCredited: amount > 0 ? amount : 0,
+              totalDebited: amount < 0 ? -amount : 0,
+            },
+            $set: { updatedAt: now },
+          },
+        )
+      const updated = await dbConn
+        .collection('wallets')
+        .findOne({ entityType, entityId })
+      return toInterface<Wallet>(updated ?? wallet)
+    },
+  },
+  walletTransactions: {
+    create: async (
+      tx: Omit<WalletTransaction, 'id' | 'createdAt'>,
+    ): Promise<WalletTransaction> => {
+      const dbConn = await getDatabase()
+      const newTx = { ...tx, createdAt: new Date().toISOString() }
+      const result = await dbConn.collection('walletTransactions').insertOne(newTx)
+      return toInterface<WalletTransaction>({ ...newTx, _id: result.insertedId })
+    },
+    getByEntity: async (
+      entityType: 'agent' | 'agency',
+      entityId: string,
+    ): Promise<WalletTransaction[]> => {
+      const dbConn = await getDatabase()
+      const list = await dbConn
+        .collection('walletTransactions')
+        .find({ entityType, entityId })
+        .sort({ createdAt: -1 })
+        .toArray()
+      return list.map((doc) => toInterface<WalletTransaction>(doc))
+    },
+  },
+  commissionRules: {
+    get: async (): Promise<CommissionRule | undefined> => {
+      const dbConn = await getDatabase()
+      const doc = await dbConn.collection('commissionRules').findOne({ id: 'global' })
+      return doc ? toInterface<CommissionRule>(doc) : undefined
+    },
+    set: async (rule: CommissionRule): Promise<CommissionRule> => {
+      const dbConn = await getDatabase()
+      const updated = { ...rule, updatedAt: new Date().toISOString() }
+      await dbConn
+        .collection('commissionRules')
+        .updateOne({ id: 'global' }, { $set: updated }, { upsert: true })
+      return updated
     },
   },
   jobCategories: {
@@ -1585,6 +1856,7 @@ export async function initializeDatabase() {
       type: 'company',
       level: 'bronze',
       price: 149,
+      yearlyPrice: 1490,
       features: { cvDownloads: 25 },
       isActive: true,
     })
@@ -1593,6 +1865,7 @@ export async function initializeDatabase() {
       type: 'company',
       level: 'silver',
       price: 299,
+      yearlyPrice: 2990,
       features: { cvDownloads: 100 },
       isActive: true,
     })
@@ -1601,7 +1874,22 @@ export async function initializeDatabase() {
       type: 'company',
       level: 'gold',
       price: 599,
+      yearlyPrice: 5990,
       features: { cvDownloads: -1 }, // unlimited
+      isActive: true,
+    })
+    await db.plans.create({
+      name: 'Diamond',
+      type: 'company',
+      level: 'diamond',
+      price: 999,
+      yearlyPrice: 9990,
+      features: {
+        cvDownloads: -1, // unlimited
+        unlimitedDownloads: true,
+        prioritySupport: true,
+        advancedManagement: true,
+      },
       isActive: true,
     })
   }

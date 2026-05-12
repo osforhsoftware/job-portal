@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { classifyCandidateJobCategories } from '@/lib/candidate-job-classification'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,11 +15,23 @@ export async function GET(request: NextRequest) {
     const sources = await db.candidateSources.getByAgencyId(agencyId)
     const sourceMap = new Map(sources.map(s => [s.candidateId, s]))
 
-    const enriched = candidates.map(c => ({
-      ...c,
-      source: sourceMap.get(c.id)?.sourceType || 'unknown',
-      agentId: sourceMap.get(c.id)?.agentId,
-    }))
+    const [jobCategories, jobSubCategories] = await Promise.all([
+      db.jobCategories.getAll(),
+      db.jobSubCategories.getAll(),
+    ])
+
+    const enriched = candidates.map(c => {
+      const cls = classifyCandidateJobCategories(c, jobCategories, jobSubCategories)
+      return {
+        ...c,
+        source: sourceMap.get(c.id)?.sourceType || 'unknown',
+        agentId: sourceMap.get(c.id)?.agentId,
+        jobCategoryName: cls.jobCategoryName,
+        jobSubCategoryName: cls.jobSubCategoryName,
+        subCategoryIds: cls.subCategoryIds,
+        parentCategoryIds: cls.parentCategoryIds,
+      }
+    })
 
     return NextResponse.json({ success: true, candidates: enriched })
   } catch (error) {

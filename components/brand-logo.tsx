@@ -2,11 +2,11 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 const sizes = {
-  sm: "h-9",
-  md: "h-10",
-  lg: "h-12",
+  sm: "h-12",
+  md: "h-13",
+  lg: "h-15",
   /** Prominent header / hero */
-  xl: "h-14 md:h-16",
+  xl: "h-20 md:h-22",
 } as const
 
 type BrandLogoProps = {
@@ -34,7 +34,7 @@ export function BrandLogo({
   const inner = (
     <>
       <img
-        src="/one_my_job_icon_1.png"
+        src="/one_my_job_icon_2.png"
         alt="ONEMYJOB"
         className={cn("w-auto object-contain object-left", sizes[size], imageClassName)}
       />

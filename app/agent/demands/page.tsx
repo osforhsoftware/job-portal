@@ -19,6 +19,7 @@ import {
   Calendar,
   ChevronRight,
   TrendingUp,
+  User,
 } from "lucide-react"
 import { PageLoader } from "@/components/page-loader"
 import { MarketplaceDemandFilterControls } from "@/components/marketplace-demand-filter-controls"
@@ -27,10 +28,12 @@ import {
   filterAndSortMarketplaceDemands,
   type MarketplaceFilterValues,
 } from "@/lib/marketplace-demand-filters"
+import { distinctEntryPersonName } from "@/lib/utils"
 
 interface Demand {
   id: string
   companyName: string
+  createdByEmployeeName?: string
   jobTitle: string
   description: string
   requirements: string[]
@@ -79,6 +82,7 @@ function FillBar({ filled, total }: { filled: number; total: number }) {
 }
 
 function DemandDetailContent({ demand }: { demand: Demand }) {
+  const entryDisplay = distinctEntryPersonName(demand.companyName, demand.createdByEmployeeName)
   return (
     <div className="space-y-6">
       {/* ===== STATUS BADGES ===== */}
@@ -100,6 +104,25 @@ function DemandDetailContent({ demand }: { demand: Demand }) {
           <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 border border-blue-200 hover:border-blue-300 transition-all">
             <span className="inline-block w-2 h-2 rounded-full mr-2 bg-blue-500" />
             {demand.gender}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-slate-200/60 bg-slate-50/50 p-4 space-y-2">
+        <div className="flex items-start gap-2 min-w-0">
+          <Building2 className="h-4 w-4 text-slate-600 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Company</p>
+            <p className="text-sm font-semibold text-slate-900 truncate">{demand.companyName}</p>
+          </div>
+        </div>
+        {entryDisplay && (
+          <div className="flex items-start gap-2 min-w-0">
+            <User className="h-4 w-4 text-slate-600 mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Demand entry</p>
+              <p className="text-sm font-semibold text-slate-900 truncate">{entryDisplay}</p>
+            </div>
           </div>
         )}
       </div>
@@ -277,6 +300,7 @@ function GridCard({ d, onSelect, onClose, selected, detailOpen }: {
   selected: Demand | null
   detailOpen: boolean
 }) {
+  const entryDisplay = distinctEntryPersonName(d.companyName, d.createdByEmployeeName)
   return (
     <Card className="flex flex-col transition-all hover:shadow-lg hover:-translate-y-0.5 border-border/60 group">
       <CardHeader className="pb-3">
@@ -285,9 +309,20 @@ function GridCard({ d, onSelect, onClose, selected, detailOpen }: {
             <CardTitle className="text-base leading-snug truncate group-hover:text-primary transition-colors">
               {d.jobTitle}
             </CardTitle>
-            <CardDescription className="mt-1 flex items-center gap-1 text-xs">
-              <Building2 className="h-3 w-3 shrink-0" />
-              <span className="truncate">{d.companyName}</span>
+            <CardDescription className="mt-1 space-y-0.5 text-xs">
+              <span className="flex items-center gap-1">
+                <Building2 className="h-3 w-3 shrink-0" />
+                <span className="truncate">{d.companyName}</span>
+              </span>
+              {entryDisplay && (
+                <span
+                  className="flex items-center gap-1 text-muted-foreground"
+                  title="Demand entry person"
+                >
+                  <User className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{entryDisplay}</span>
+                </span>
+              )}
             </CardDescription>
           </div>
           <Badge
@@ -356,7 +391,11 @@ function GridCard({ d, onSelect, onClose, selected, detailOpen }: {
             <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{d.jobTitle}</DialogTitle>
-                <DialogDescription>{d.companyName} · {d.location}</DialogDescription>
+                <DialogDescription>
+                  {d.companyName}
+                  {entryDisplay ? ` · ${entryDisplay}` : ""}
+                  {" · "}{d.location}
+                </DialogDescription>
               </DialogHeader>
               {selected && <DemandDetailContent demand={selected} />}
             </DialogContent>
@@ -381,6 +420,7 @@ function ListRow({ d, onSelect, onClose, selected, detailOpen }: {
   selected: Demand | null
   detailOpen: boolean
 }) {
+  const entryDisplay = distinctEntryPersonName(d.companyName, d.createdByEmployeeName)
   return (
     <Card className="transition-all hover:shadow-md hover:border-primary/30 group">
       <CardContent className="p-4">
@@ -397,6 +437,12 @@ function ListRow({ d, onSelect, onClose, selected, detailOpen }: {
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{d.companyName}</span>
+              {entryDisplay && (
+                <span className="flex items-center gap-1" title="Demand entry person">
+                  <User className="h-3 w-3 shrink-0" />
+                  {entryDisplay}
+                </span>
+              )}
               {d.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{d.location}</span>}
               <span className="flex items-center gap-1"><Wallet className="h-3 w-3" />{formatSalary(d.salary)}</span>
             </div>
@@ -436,9 +482,13 @@ function ListRow({ d, onSelect, onClose, selected, detailOpen }: {
               <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{d.jobTitle}</DialogTitle>
-                  <DialogDescription>{d.companyName} · {d.location}</DialogDescription>
-                </DialogHeader>
-                {selected && <DemandDetailContent demand={selected} />}
+                <DialogDescription>
+                  {d.companyName}
+                  {entryDisplay ? ` · ${entryDisplay}` : ""}
+                  {" · "}{d.location}
+                </DialogDescription>
+              </DialogHeader>
+              {selected && <DemandDetailContent demand={selected} />}
               </DialogContent>
             </Dialog>
             <Button size="sm" asChild className="gap-1 h-8 text-xs">
@@ -479,7 +529,9 @@ function TableView({ demands, onSelect, onClose, selected, detailOpen }: {
             </tr>
           </thead>
           <tbody>
-            {demands.map((d, i) => (
+            {demands.map((d, i) => {
+              const entryDisplay = distinctEntryPersonName(d.companyName, d.createdByEmployeeName)
+              return (
               <tr
                 key={d.id}
                 className={`border-b border-border/40 hover:bg-muted/30 transition-colors ${i % 2 === 0 ? "" : "bg-muted/10"}`}
@@ -496,10 +548,21 @@ function TableView({ demands, onSelect, onClose, selected, detailOpen }: {
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <Building2 className="h-3 w-3 shrink-0" />
-                    {d.companyName}
-                  </span>
+                  <div className="flex flex-col gap-0.5 min-w-0 max-w-[160px]">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Building2 className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{d.companyName}</span>
+                    </span>
+                    {entryDisplay && (
+                      <span
+                        className="flex items-center gap-1 text-[11px] text-muted-foreground pl-4"
+                        title="Demand entry person"
+                      >
+                        <User className="h-3 w-3 shrink-0 -ml-3" />
+                        <span className="truncate">{entryDisplay}</span>
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   <span className="flex items-center gap-1 text-muted-foreground">
@@ -537,7 +600,11 @@ function TableView({ demands, onSelect, onClose, selected, detailOpen }: {
                       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>{d.jobTitle}</DialogTitle>
-                          <DialogDescription>{d.companyName} · {d.location}</DialogDescription>
+                          <DialogDescription>
+                          {d.companyName}
+                          {entryDisplay ? ` · ${entryDisplay}` : ""}
+                          {" · "}{d.location}
+                        </DialogDescription>
                         </DialogHeader>
                         {selected && <DemandDetailContent demand={selected} />}
                       </DialogContent>
@@ -551,7 +618,8 @@ function TableView({ demands, onSelect, onClose, selected, detailOpen }: {
                   </div>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>

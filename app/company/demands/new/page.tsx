@@ -154,12 +154,23 @@ export default function CreateDemandPage() {
     const u = JSON.parse(user)
     setUserId(u.id ?? "")
     setCompanyId(u.companyId ?? u.id ?? "")
-    const derivedCompanyName = u.name ?? u.companyName ?? ""
-    setCompanyName(derivedCompanyName)
     const defaultName = u.name ?? u.contactName ?? ""
     setEmployeeName(defaultName)
     setEmployeeUserId(u.id ?? "")
   }, [router])
+
+  /** Persist legal company name on demands (not the logged-in display name). */
+  useEffect(() => {
+    if (!companyId) return
+    fetch(`/api/company/stats?companyId=${encodeURIComponent(companyId)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && typeof data.stats?.companyName === "string" && data.stats.companyName.trim()) {
+          setCompanyName(data.stats.companyName.trim())
+        }
+      })
+      .catch(() => {})
+  }, [companyId])
 
   useEffect(() => {
     if (!companyId) return
@@ -295,7 +306,7 @@ export default function CreateDemandPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           companyId,
-          companyName: companyName || "Company",
+          companyName: companyName.trim() || undefined,
           createdByUserId: userId || undefined,
           createdByEmployeeName: employeeName || undefined,
           timeRemark: timeRemark || undefined,
